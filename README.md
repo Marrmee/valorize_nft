@@ -1,1 +1,1 @@
-# valorize_nft_project
+# valorize_nft
