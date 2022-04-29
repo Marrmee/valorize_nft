@@ -41,14 +41,14 @@ async function printVersionMessage(packageJson: PackageJson) {
   console.log(packageJson.version);
 }
 
-function printWarningAboutNodeJsVersionIfNeceesary(packageJson: PackageJson) {
+function printWarningAboutNodeJsVersionIfNecessary(packageJson: PackageJson) {
   const requirement = packageJson.engines.node;
   if (!semver.satisfies(process.version, requirement)) {
     console.warn(
       chalk.yellow(
         `You are using a version of Node.js that is not supported by Hardhat, and it may work incorrectly, or not work at all.
 
-Please, upgrade your Node.js version.
+Please, make sure you are using a supported version of Node.js.
 
 To learn more about which versions of Node.js are supported go to https://hardhat.org/nodejs-versions`
       )
@@ -64,7 +64,7 @@ async function main() {
   try {
     const packageJson = await getPackageJson();
 
-    printWarningAboutNodeJsVersionIfNeceesary(packageJson);
+    printWarningAboutNodeJsVersionIfNecessary(packageJson);
 
     const envVariableArguments = getEnvHardhatArguments(
       HARDHAT_PARAM_DEFINITIONS,
@@ -139,10 +139,13 @@ async function main() {
 
     const ctx = HardhatContext.createHardhatContext();
 
-    const config = loadConfigAndTasks(hardhatArguments, {
-      showEmptyConfigWarning,
-      showSolidityConfigWarnings,
-    });
+    const { resolvedConfig, userConfig } = loadConfigAndTasks(
+      hardhatArguments,
+      {
+        showEmptyConfigWarning,
+        showSolidityConfigWarnings,
+      }
+    );
 
     let telemetryConsent: boolean | undefined = hasConsentedTelemetry();
 
@@ -162,7 +165,7 @@ async function main() {
 
     const analytics = await Analytics.getInstance(telemetryConsent);
 
-    Reporter.setConfigPath(config.paths.configFile);
+    Reporter.setConfigPath(resolvedConfig.paths.configFile);
     if (telemetryConsent === true) {
       Reporter.setEnabled(true);
     }
@@ -200,11 +203,12 @@ async function main() {
     }
 
     const env = new Environment(
-      config,
+      resolvedConfig,
       hardhatArguments,
       taskDefinitions,
       envExtenders,
-      ctx.experimentalHardhatNetworkMessageTraceHooks
+      ctx.experimentalHardhatNetworkMessageTraceHooks,
+      userConfig
     );
 
     ctx.setHardhatRuntimeEnvironment(env);

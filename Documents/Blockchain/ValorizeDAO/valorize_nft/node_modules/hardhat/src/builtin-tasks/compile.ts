@@ -1,9 +1,11 @@
+import os from "os";
 import chalk from "chalk";
 import { exec } from "child_process";
 import debug from "debug";
 import fsExtra from "fs-extra";
 import path from "path";
 import semver from "semver";
+import AggregateError from "aggregate-error";
 
 import {
   Artifacts as ArtifactsImpl,
@@ -72,6 +74,7 @@ import {
   TASK_COMPILE_SOLIDITY_READ_FILE,
   TASK_COMPILE_SOLIDITY_RUN_SOLC,
   TASK_COMPILE_SOLIDITY_RUN_SOLCJS,
+  TASK_COMPILE_REMOVE_OBSOLETE_ARTIFACTS,
 } from "./task-names";
 import {
   getSolidityFilesCachePath,
@@ -378,39 +381,92 @@ subtask(TASK_COMPILE_SOLIDITY_COMPILE_JOBS)
         return { artifactsEmittedPerJob: [] };
       }
 
-      // sort compilation jobs by compiler version
-      const sortedCompilationJobs = compilationJobs
-        .slice()
-        .sort((job1, job2) => {
-          return semver.compare(
-            job1.getSolcConfig().version,
-            job2.getSolcConfig().version
-          );
-        });
+      const { default: pMap } = await import("p-map");
 
-      log(`Compiling ${sortedCompilationJobs.length} jobs`);
+      log(`Compiling ${compilationJobs.length} jobs`);
 
-      const artifactsEmittedPerJob: ArtifactsEmittedPerJob = [];
-      for (let i = 0; i < sortedCompilationJobs.length; i++) {
-        const compilationJob = sortedCompilationJobs[i];
+      const versionList: string[] = [];
+      for (const job of compilationJobs) {
+        const solcVersion = job.getSolcConfig().version;
 
-        const { artifactsEmittedPerFile } = await run(
-          TASK_COMPILE_SOLIDITY_COMPILE_JOB,
-          {
-            compilationJob,
-            compilationJobs: sortedCompilationJobs,
-            compilationJobIndex: i,
-            quiet,
+        if (!versionList.includes(solcVersion)) {
+          // versions older than 0.4.11 don't work with hardhat
+          // see issue https://github.com/nomiclabs/hardhat/issues/2004
+          if (
+            semver.lt(solcVersion, COMPILE_TASK_FIRST_SOLC_VERSION_SUPPORTED)
+          ) {
+            throw new HardhatError(
+              ERRORS.BUILTIN_TASKS.COMPILE_TASK_UNSUPPORTED_SOLC_VERSION,
+              {
+                version: solcVersion,
+                firstSupportedVersion:
+                  COMPILE_TASK_FIRST_SOLC_VERSION_SUPPORTED,
+              }
+            );
           }
-        );
 
-        artifactsEmittedPerJob.push({
-          compilationJob,
-          artifactsEmittedPerFile,
+          versionList.push(solcVersion);
+        }
+      }
+
+      /**
+       * Downloading the same version of a compiler in parallel can cause an
+       * error. When compilation jobs are executed in parallel, there's a chance
+       * that both use the same solc version and trigger this problem. To
+       * prevent that, we pre-download all the necessary compilers before
+       * running the compilation jobs.
+       */
+      for (const solcVersion of versionList) {
+        await run(TASK_COMPILE_SOLIDITY_GET_SOLC_BUILD, {
+          solcVersion,
+          quiet: false,
         });
       }
 
-      return { artifactsEmittedPerJob };
+      const pMapOptions = { concurrency: os.cpus().length, stopOnError: false };
+      try {
+        const results = await pMap(
+          compilationJobs,
+          (compilationJob, compilationJobIndex) => {
+            return run(TASK_COMPILE_SOLIDITY_COMPILE_JOB, {
+              compilationJob,
+              compilationJobs,
+              compilationJobIndex,
+              quiet,
+            });
+          },
+          pMapOptions
+        );
+
+        const artifactsEmittedPerJob: ArtifactsEmittedPerJob = results.map(
+          ({ compilationJob, artifactsEmittedPerFile }) => ({
+            compilationJob,
+            artifactsEmittedPerFile,
+          })
+        );
+
+        return { artifactsEmittedPerJob };
+      } catch (e) {
+        if (!(e instanceof AggregateError)) {
+          // eslint-disable-next-line @nomiclabs/hardhat-internal-rules/only-hardhat-error
+          throw e;
+        }
+
+        for (const error of e) {
+          if (
+            !HardhatError.isHardhatErrorType(
+              error,
+              ERRORS.BUILTIN_TASKS.COMPILE_FAILURE
+            )
+          ) {
+            // eslint-disable-next-line @nomiclabs/hardhat-internal-rules/only-hardhat-error
+            throw error;
+          }
+        }
+
+        // error is an aggregate error, and all errors are compilation failures
+        throw new HardhatError(ERRORS.BUILTIN_TASKS.COMPILE_FAILURE);
+      }
     }
   );
 
@@ -645,18 +701,6 @@ subtask(TASK_COMPILE_SOLIDITY_COMPILE_SOLC)
       },
       { run }
     ): Promise<{ output: CompilerOutput; solcBuild: SolcBuild }> => {
-      // versions older than 0.4.11 don't work with hardhat
-      // see issue https://github.com/nomiclabs/hardhat/issues/2004
-      if (semver.lt(solcVersion, COMPILE_TASK_FIRST_SOLC_VERSION_SUPPORTED)) {
-        throw new HardhatError(
-          ERRORS.BUILTIN_TASKS.COMPILE_TASK_UNSUPPORTED_SOLC_VERSION,
-          {
-            version: solcVersion,
-            firstSupportedVersion: COMPILE_TASK_FIRST_SOLC_VERSION_SUPPORTED,
-          }
-        );
-      }
-
       const solcBuild: SolcBuild = await run(
         TASK_COMPILE_SOLIDITY_GET_SOLC_BUILD,
         {
@@ -869,45 +913,11 @@ subtask(TASK_COMPILE_SOLIDITY_LOG_RUN_COMPILER_START)
   .addParam("compilationJobIndex", undefined, undefined, types.int)
   .addParam("quiet", undefined, undefined, types.boolean)
   .setAction(
-    async ({
-      compilationJobs,
-      compilationJobIndex,
-    }: {
+    async ({}: {
       compilationJob: CompilationJob;
       compilationJobs: CompilationJob[];
       compilationJobIndex: number;
-    }) => {
-      const solcVersion =
-        compilationJobs[compilationJobIndex].getSolcConfig().version;
-
-      // we log if this is the first job, or if the previous job has a
-      // different solc version
-      const shouldLog =
-        compilationJobIndex === 0 ||
-        compilationJobs[compilationJobIndex - 1].getSolcConfig().version !==
-          solcVersion;
-
-      if (!shouldLog) {
-        return;
-      }
-
-      // count how many files emit artifacts for this version
-      let count = 0;
-      for (let i = compilationJobIndex; i < compilationJobs.length; i++) {
-        const job = compilationJobs[i];
-        if (job.getSolcConfig().version !== solcVersion) {
-          break;
-        }
-
-        count += job
-          .getResolvedFiles()
-          .filter((file) => job.emitsArtifacts(file)).length;
-      }
-
-      console.log(
-        `Compiling ${count} ${pluralize(count, "file")} with ${solcVersion}`
-      );
-    }
+    }) => {}
   );
 
 /**
@@ -1112,7 +1122,7 @@ subtask(TASK_COMPILE_SOLIDITY_GET_COMPILATION_JOBS_FAILURE_REASONS)
       }
 
       if (noCompatibleSolc.length > 0) {
-        errorMessage += `The Solidity version pragma statement in these files don't match any of the configured compilers in your config. Change the pragma or configure additional compiler versions in your hardhat config.
+        errorMessage += `The Solidity version pragma statement in these files doesn't match any of the configured compilers in your config. Change the pragma or configure additional compiler versions in your hardhat config.
 
 `;
 
@@ -1256,8 +1266,17 @@ subtask(TASK_COMPILE_SOLIDITY_LOG_COMPILATION_RESULT)
   .addParam("quiet", undefined, undefined, types.boolean)
   .setAction(
     async ({ compilationJobs }: { compilationJobs: CompilationJob[] }) => {
-      if (compilationJobs.length > 0) {
-        console.log("Compilation finished successfully");
+      let count = 0;
+      for (const job of compilationJobs) {
+        count += job
+          .getResolvedFiles()
+          .filter((file) => job.emitsArtifacts(file)).length;
+      }
+
+      if (count > 0) {
+        console.log(
+          `Compiled ${count} Solidity ${pluralize(count, "file")} successfully`
+        );
       }
     }
   );
@@ -1358,8 +1377,7 @@ subtask(TASK_COMPILE_SOLIDITY)
       // We know this is the actual implementation, so we use some
       // non-public methods here.
       const artifactsImpl = artifacts as ArtifactsImpl;
-      await artifactsImpl.removeObsoleteArtifacts(allArtifactsEmittedPerFile);
-      await artifactsImpl.removeObsoleteBuildInfos();
+      artifactsImpl.addValidArtifacts(allArtifactsEmittedPerFile);
 
       await solidityFilesCache.writeToFile(solidityFilesCachePath);
 
@@ -1369,6 +1387,13 @@ subtask(TASK_COMPILE_SOLIDITY)
       });
     }
   );
+
+subtask(TASK_COMPILE_REMOVE_OBSOLETE_ARTIFACTS, async (_, { artifacts }) => {
+  // We know this is the actual implementation, so we use some
+  // non-public methods here.
+  const artifactsImpl = artifacts as ArtifactsImpl;
+  await artifactsImpl.removeObsoleteArtifacts();
+});
 
 /**
  * Returns a list of compilation tasks.
@@ -1396,6 +1421,8 @@ task(TASK_COMPILE, "Compiles the entire project, building all artifacts")
     for (const compilationTask of compilationTasks) {
       await run(compilationTask, compilationArgs);
     }
+
+    await run(TASK_COMPILE_REMOVE_OBSOLETE_ARTIFACTS);
   });
 
 /**

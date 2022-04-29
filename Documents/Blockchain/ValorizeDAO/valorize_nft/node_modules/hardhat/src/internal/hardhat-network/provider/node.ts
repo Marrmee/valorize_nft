@@ -12,6 +12,7 @@ import { EVMResult, ExecResult } from "@ethereumjs/vm/dist/evm/evm";
 import { ERROR } from "@ethereumjs/vm/dist/exceptions";
 import { RunBlockResult } from "@ethereumjs/vm/dist/runBlock";
 import { DefaultStateManager, StateManager } from "@ethereumjs/vm/dist/state";
+import { SignTypedDataVersion, signTypedData } from "@metamask/eth-sig-util";
 import chalk from "chalk";
 import debug from "debug";
 import {
@@ -71,6 +72,7 @@ import { VMTracer } from "../stack-traces/vm-tracer";
 
 import "./ethereumjs-workarounds";
 import { rpcQuantityToBN } from "../../core/jsonrpc/types/base-types";
+import { JsonRpcClient } from "../jsonrpc/client";
 import { bloomFilter, Filter, filterLogs, LATEST_BLOCK, Type } from "./filter";
 import { ForkBlockchain } from "./fork/ForkBlockchain";
 import { ForkStateManager } from "./fork/ForkStateManager";
@@ -116,8 +118,6 @@ import { txMapToArray } from "./utils/txMapToArray";
 
 const log = debug("hardhat:core:hardhat-network:node");
 
-const ethSigUtil = require("eth-sig-util");
-
 /* eslint-disable @nomiclabs/hardhat-internal-rules/only-hardhat-error */
 
 export class HardhatNode extends EventEmitter {
@@ -151,10 +151,15 @@ export class HardhatNode extends EventEmitter {
         : undefined;
 
     const hardfork = getHardforkName(config.hardfork);
+    let forkClient: JsonRpcClient | undefined;
 
     if (isForkedNodeConfig(config)) {
-      const { forkClient, forkBlockNumber, forkBlockTimestamp } =
-        await makeForkClient(config.forkConfig, config.forkCachePath);
+      const {
+        forkClient: _forkClient,
+        forkBlockNumber,
+        forkBlockTimestamp,
+      } = await makeForkClient(config.forkConfig, config.forkCachePath);
+      forkClient = _forkClient;
       common = await makeForkCommon(config);
 
       forkNetworkId = forkClient.getNetworkId();
@@ -209,7 +214,7 @@ export class HardhatNode extends EventEmitter {
         trie: stateTrie,
       });
 
-      const hardhatBlockchain = new HardhatBlockchain();
+      const hardhatBlockchain = new HardhatBlockchain(common);
 
       const genesisBlockBaseFeePerGas = hardforkGte(
         hardfork,
@@ -261,7 +266,8 @@ export class HardhatNode extends EventEmitter {
       tracingConfig,
       forkNetworkId,
       forkBlockNum,
-      nextBlockBaseFeePerGas
+      nextBlockBaseFeePerGas,
+      forkClient
     );
 
     return [common, node];
@@ -340,7 +346,8 @@ Hardhat Network's forking functionality only works with blocks from at least spu
     tracingConfig?: TracingConfig,
     private _forkNetworkId?: number,
     private _forkBlockNumber?: number,
-    nextBlockBaseFee?: BN
+    nextBlockBaseFee?: BN,
+    private _forkClient?: JsonRpcClient
   ) {
     super();
 
@@ -491,6 +498,79 @@ Hardhat Network's forking functionality only works with blocks from at least spu
     return result;
   }
 
+  /**
+   * Mines `count` blocks with a difference of `interval` seconds between their
+   * timestamps.
+   *
+   * Returns an array with the results of the blocks that were really mined (the
+   * ones that were reserved are not included).
+   */
+  public async mineBlocks(
+    count: BN = new BN(1),
+    interval: BN = new BN(1)
+  ): Promise<MineBlockResult[]> {
+    if (count.eqn(0)) {
+      // nothing to do
+      return [];
+    }
+
+    const mineBlockResults: MineBlockResult[] = [];
+
+    // we always mine the first block, and we don't apply the interval for it
+    mineBlockResults.push(await this.mineBlock());
+
+    // helper function to mine a block with a timstamp that respects the
+    // interval
+    const mineBlock = async () => {
+      const nextTimestamp = (await this.getLatestBlock()).header.timestamp.add(
+        interval
+      );
+      mineBlockResults.push(await this.mineBlock(nextTimestamp));
+    };
+
+    // then we mine any pending transactions
+    while (
+      count.gtn(mineBlockResults.length) &&
+      this._txPool.hasPendingTransactions()
+    ) {
+      await mineBlock();
+    }
+
+    // If there is at least one remaining block, we mine one. This way, we
+    // guarantee that there's an empty block immediately before and after the
+    // reservation. This makes the logging easier to get right.
+    if (count.gtn(mineBlockResults.length)) {
+      await mineBlock();
+    }
+
+    const remainingBlockCount = count.subn(mineBlockResults.length);
+
+    // There should be at least 2 blocks left for the reservation to work,
+    // because we always mine a block after it. But here we use a bigger
+    // number to err on the safer side.
+    if (remainingBlockCount.lten(5)) {
+      // if there are few blocks left to mine, we just mine them
+      while (count.gtn(mineBlockResults.length)) {
+        await mineBlock();
+      }
+
+      return mineBlockResults;
+    }
+
+    // otherwise, we reserve a range and mine the last one
+    const latestBlock = await this.getLatestBlock();
+    this._blockchain.reserveBlocks(
+      remainingBlockCount.subn(1),
+      interval,
+      await this._stateManager.getStateRoot(),
+      await this.getBlockTotalDifficulty(latestBlock)
+    );
+
+    await mineBlock();
+
+    return mineBlockResults;
+  }
+
   public async runCall(
     call: CallParams,
     blockNumberOrPending: BN | "pending"
@@ -545,7 +625,7 @@ Hardhat Network's forking functionality only works with blocks from at least spu
     blockNumberOrPending?: BN | "pending"
   ): Promise<BN> {
     if (blockNumberOrPending === undefined) {
-      blockNumberOrPending = await this.getLatestBlockNumber();
+      blockNumberOrPending = this.getLatestBlockNumber();
     }
 
     const account = await this._runInBlockContext(blockNumberOrPending, () =>
@@ -589,8 +669,8 @@ Hardhat Network's forking functionality only works with blocks from at least spu
     return this._blockchain.getLatestBlock();
   }
 
-  public async getLatestBlockNumber(): Promise<BN> {
-    return new BN((await this.getLatestBlock()).header.number);
+  public getLatestBlockNumber(): BN {
+    return this._blockchain.getLatestBlockNumber();
   }
 
   public async getPendingBlockAndTotalDifficulty(): Promise<[Block, BN]> {
@@ -879,7 +959,9 @@ Hardhat Network's forking functionality only works with blocks from at least spu
   ): Promise<string> {
     const privateKey = this._getLocalAccountPrivateKey(address);
 
-    return ethSigUtil.signTypedData_v4(privateKey, {
+    return signTypedData({
+      privateKey,
+      version: SignTypedDataVersion.V4,
       data: typedData,
     });
   }
@@ -1318,7 +1400,7 @@ Hardhat Network's forking functionality only works with blocks from at least spu
     newestBlock: BN | "pending",
     rewardPercentiles: number[]
   ): Promise<FeeHistory> {
-    const latestBlock = await this.getLatestBlockNumber();
+    const latestBlock = this.getLatestBlockNumber();
     const pendingBlockNumber = latestBlock.addn(1);
 
     const resolvedNewestBlock =
@@ -1329,21 +1411,61 @@ Hardhat Network's forking functionality only works with blocks from at least spu
       new BN(0)
     );
 
+    // This is part of a temporary fix to https://github.com/NomicFoundation/hardhat/issues/2380
+    const rangeIncludesRemoteBlocks =
+      this._forkBlockNumber !== undefined &&
+      oldestBlock.lten(this._forkBlockNumber);
+
     const baseFeePerGas: BN[] = [];
     const gasUsedRatio: number[] = [];
     const reward: BN[][] = [];
 
     const lastBlock = resolvedNewestBlock.addn(1);
 
+    // This is part of a temporary fix to https://github.com/NomicFoundation/hardhat/issues/2380
+    if (rangeIncludesRemoteBlocks) {
+      try {
+        const lastRemoteBlock = BN.min(
+          new BN(this._forkBlockNumber!),
+          lastBlock
+        );
+
+        const remoteBlockCount = lastRemoteBlock.sub(oldestBlock).addn(1);
+
+        const remoteValues = await this._forkClient!.getFeeHistory(
+          remoteBlockCount,
+          lastRemoteBlock,
+          rewardPercentiles
+        );
+
+        baseFeePerGas.push(...remoteValues.baseFeePerGas);
+        gasUsedRatio.push(...remoteValues.gasUsedRatio);
+        if (remoteValues.reward !== undefined) {
+          reward.push(...remoteValues.reward);
+        }
+      } catch (e) {
+        // TODO: we can return less blocks here still be compliant with the spec
+        throw new InternalError(
+          "Remote node did not answer to eth_feeHistory correctly",
+          e instanceof Error ? e : undefined
+        );
+      }
+    }
+
     // We get the pending block here, and only if necessary, as it's something
-    // constly to do.
+    // costly to do.
     let pendingBlock: Block | undefined;
     if (lastBlock.gte(pendingBlockNumber)) {
       pendingBlock = await this.getBlockByNumber("pending");
     }
 
+    // This is part of a temporary fix to https://github.com/NomicFoundation/hardhat/issues/2380
+    const firstLocalBlock = !rangeIncludesRemoteBlocks
+      ? oldestBlock
+      : BN.min(new BN(this._forkBlockNumber!), lastBlock).addn(1);
+
     for (
-      let blockNumber = oldestBlock;
+      let blockNumber = firstLocalBlock; // This is part of a temporary fix to https://github.com/NomicFoundation/hardhat/issues/2380
       blockNumber.lte(lastBlock);
       blockNumber = blockNumber.addn(1)
     ) {
@@ -1995,7 +2117,7 @@ Hardhat Network's forking functionality only works with blocks from at least spu
       return this._runInPendingBlockContext(action);
     }
 
-    if (blockNumberOrPending.eq(await this.getLatestBlockNumber())) {
+    if (blockNumberOrPending.eq(this.getLatestBlockNumber())) {
       return action();
     }
 
@@ -2253,7 +2375,7 @@ Hardhat Network's forking functionality only works with blocks from at least spu
     filterParams: FilterParams,
     isFilter: boolean
   ): Promise<FilterParams> {
-    const latestBlockNumber = await this.getLatestBlockNumber();
+    const latestBlockNumber = this.getLatestBlockNumber();
     const newFilterParams = { ...filterParams };
 
     if (newFilterParams.fromBlock === LATEST_BLOCK) {
@@ -2335,7 +2457,7 @@ Hardhat Network's forking functionality only works with blocks from at least spu
 
   private async _persistIrregularWorldState(): Promise<void> {
     this._irregularStatesByBlockNumber.set(
-      (await this.getLatestBlock()).header.number.toString(),
+      this.getLatestBlockNumber().toString(),
       await this._stateManager.getStateRoot()
     );
   }
