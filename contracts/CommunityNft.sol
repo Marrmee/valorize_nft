@@ -17,9 +17,6 @@ contract CommunityNft is ERC721, Ownable {
   bool public isWhaleAllowListActive = false;
   bool public isSealAllowListActive = false;
   bool public isPlanktonAllowListActive = false;
-  uint256 public constant MAX_WHALE_SUPPLY = 50;
-  uint256 public constant MAX_SEAL_SUPPLY = 150;
-  uint256 public constant MAX_PLANKTON_SUPPLY = 2800;
   uint256 public constant PRICE_PER_WHALE_TOKEN = 1.0 ether;
   uint256 public constant PRICE_PER_SEAL_TOKEN = 0.2 ether;
   uint256 public constant PRICE_PER_PLANKTON_TOKEN = 0.1 ether;
@@ -206,7 +203,6 @@ function numAvailableToPlanktonMint(address addr) external view returns (uint8) 
   function whaleMintAllowList(uint8 numberOfTokens) external payable {
       require(isWhaleAllowListActive, "Allow list is not active");
       require(numberOfTokens <= _whaleAllowList[msg.sender], "Exceeded max available to purchase");
-      //require(ts + numberOfTokens <= MAX_WHALE_SUPPLY, "Purchase would exceed max tokens");
       require(PRICE_PER_WHALE_TOKEN * numberOfTokens <= msg.value, "Ether value sent is not correct");
 
       _whaleAllowList[msg.sender] -= numberOfTokens;
@@ -218,7 +214,6 @@ function numAvailableToPlanktonMint(address addr) external view returns (uint8) 
   function sealMintAllowList(uint8 numberOfTokens) external payable {
       require(isSealAllowListActive, "Allow list is not active");
       require(numberOfTokens <= _sealAllowList[msg.sender], "Exceeded max available to purchase");
-      //require(ts + numberOfTokens <= MAX_SEAL_SUPPLY, "Purchase would exceed max tokens");
       require(PRICE_PER_SEAL_TOKEN * numberOfTokens <= msg.value, "Ether value sent is not correct");
 
       _sealAllowList[msg.sender] -= numberOfTokens;
@@ -230,7 +225,6 @@ function numAvailableToPlanktonMint(address addr) external view returns (uint8) 
   function planktonMintAllowList(uint8 numberOfTokens) external payable {
       require(isPlanktonAllowListActive, "Allow list is not active");
       require(numberOfTokens <= _planktonAllowList[msg.sender], "Exceeded max available to purchase");
-      //require(ts + numberOfTokens <= MAX_PLANKTON_SUPPLY, "Purchase would exceed max tokens");
       require(PRICE_PER_PLANKTON_TOKEN * numberOfTokens <= msg.value, "Ether value sent is not correct");
 
       _planktonAllowList[msg.sender] -= numberOfTokens;
@@ -238,13 +232,4 @@ function numAvailableToPlanktonMint(address addr) external view returns (uint8) 
           getRandomPlanktonNFT();
     }
   }
-
-  function _beforeTokenTransfer(address from, address to, uint256 tokenId) internal override(ERC721, ERC721Enumerable) {
-        super._beforeTokenTransfer(from, to, tokenId);
-  }
-
-  function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721, ERC721Enumerable) returns (bool) {
-        return super.supportsInterface(interfaceId);
-  }
-
 }
