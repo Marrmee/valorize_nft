@@ -42,22 +42,25 @@ describe("CommunityNft", () => {
     beforeEach(setupCommunityNft)
 
     it("mints a random whale NFT", async () => {
+      const overridesWhale = {value: ethers.utils.parseEther("1.0")}
       const leftBeforeMint = await communityNft.whaleTokensLeft();
-      await communityNft.getRandomWhaleNFT();
+      await communityNft.getRandomWhaleNFT(overridesWhale);
       const leftAfterMint = await communityNft.whaleTokensLeft();
       expect(leftBeforeMint).to.equal(leftAfterMint.add(1));
     });
 
     it("mints a random seal NFT", async () => {
+      const overridesSeal = {value: ethers.utils.parseEther("0.2")}
       const leftBeforeMint = await communityNft.sealTokensLeft();
-      await communityNft.getRandomSealNFT();
+      await communityNft.getRandomSealNFT(overridesSeal);
       const leftAfterMint = await communityNft.sealTokensLeft();
       expect(leftBeforeMint).to.equal(leftAfterMint.add(1));
     });
 
     it("mints a random plankton NFT", async () => {
+      const overridesPlankton = {value: ethers.utils.parseEther("0.1")}
       const leftBeforeMint = await communityNft.planktonTokensLeft();
-      await communityNft.getRandomPlanktonNFT();
+      await communityNft.getRandomPlanktonNFT(overridesPlankton);
       const leftAfterMint = await communityNft.planktonTokensLeft();
       expect(leftBeforeMint).to.equal(leftAfterMint.add(1));
     });
@@ -126,21 +129,40 @@ describe("CommunityNft", () => {
 describe("Setting up a whitelist and let a whitelisted address make a mint of choice", async () => {
   beforeEach(setupCommunityNft)
 
-    it("sets the whale whitelist while it is inactive", async () => {
-      const addressesForWhitelist = [await addresses[0].getAddress(), await addresses[1].getAddress()];
-      const tokensToBeMintedPerAddress = 1;
-      await communityNft.setWhaleAllowList(addressesForWhitelist, tokensToBeMintedPerAddress)
-    });
-
-    it("sets the whitelist while inactive and allows whitelisted addresses to mint while the active", async () => {
+    it("sets the whitelist while inactive and allows whitelisted addresses to mint Whale NFTs while active", async () => {
       const addressesForWhitelist = [await addresses[0].getAddress(), await addresses[1].getAddress()];
       const tokensToBeMintedPerAddress = 1;
       await communityNft.setWhaleAllowList(addressesForWhitelist, tokensToBeMintedPerAddress);
-
+      const whiteListed = await addresses[0].getAddress();
       await communityNft.connect(deployer).setIsWhaleAllowListActive(true);
-      const numberOfTokensToMint = 1;
+      const overridesWhale = {value: ethers.utils.parseEther("1.0")}
+      await communityNft.connect(addresses[0]).whaleMintAllowList(1, overridesWhale);
+      const recipientBalanceAfterMint = await communityNft.balanceOf(whiteListed);
+      expect(recipientBalanceAfterMint).to.equal(1);
+    });
 
-      await communityNft.connect(addresses[0]).whaleMintAllowList(numberOfTokensToMint);
+    it("sets the whitelist while inactive and allows whitelisted addresses to mint Seal NFTs while active", async () => {
+      const addressesForWhitelist = [await addresses[0].getAddress(), await addresses[1].getAddress()];
+      const tokensToBeMintedPerAddress = 1;
+      await communityNft.setSealAllowList(addressesForWhitelist, tokensToBeMintedPerAddress);
+      const whiteListed = await addresses[0].getAddress();
+      await communityNft.connect(deployer).setIsSealAllowListActive(true);
+      const overridesSeal = {value: ethers.utils.parseEther("0.2")}
+      await communityNft.connect(addresses[0]).sealMintAllowList(1, overridesSeal);
+      const recipientBalanceAfterMint = await communityNft.balanceOf(whiteListed);
+      expect(recipientBalanceAfterMint).to.equal(1);
+    });
+
+    it("sets the whitelist while inactive and allows whitelisted addresses to mint Plankton NFTs while active", async () => {
+      const addressesForWhitelist = [await addresses[0].getAddress(), await addresses[1].getAddress()];
+      const tokensToBeMintedPerAddress = 1;
+      await communityNft.setPlanktonAllowList(addressesForWhitelist, tokensToBeMintedPerAddress);
+      const whiteListed = await addresses[0].getAddress();
+      await communityNft.connect(deployer).setIsPlanktonAllowListActive(true);
+      const overridesSeal = {value: ethers.utils.parseEther("0.1")}
+      await communityNft.connect(addresses[0]).planktonMintAllowList(1, overridesSeal);
+      const recipientBalanceAfterMint = await communityNft.balanceOf(whiteListed);
+      expect(recipientBalanceAfterMint).to.equal(1);
     });
   });
 })

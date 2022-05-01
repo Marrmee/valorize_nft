@@ -3,7 +3,6 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 
 /**
 @title CommunityNft
@@ -11,7 +10,7 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 @dev Implementation of a Community Non Fungible Token using ERC721B.
 */
 
-contract CommunityNft is ERC721, ERC721Enumerable, Ownable {
+contract CommunityNft is ERC721, Ownable {
   using Strings for uint256;
 
   bool public REVEAL = false;
@@ -21,7 +20,7 @@ contract CommunityNft is ERC721, ERC721Enumerable, Ownable {
   uint256 public constant MAX_WHALE_SUPPLY = 50;
   uint256 public constant MAX_SEAL_SUPPLY = 150;
   uint256 public constant MAX_PLANKTON_SUPPLY = 2800;
-  uint256 public constant PRICE_PER_WHALE_TOKEN = 1 ether;
+  uint256 public constant PRICE_PER_WHALE_TOKEN = 1.0 ether;
   uint256 public constant PRICE_PER_SEAL_TOKEN = 0.2 ether;
   uint256 public constant PRICE_PER_PLANKTON_TOKEN = 0.1 ether;
   string public URI;
@@ -73,9 +72,9 @@ contract CommunityNft is ERC721, ERC721Enumerable, Ownable {
    }
 
   function getRandomWhaleNFT() public payable {
-    uint256 whaleTokenId;
-    whaleTokenId = (block.number / whaleTokensLeft) % whaleTokensLeft + 1; 
+    uint256 whaleTokenId = (block.number / whaleTokensLeft) % whaleTokensLeft + 1; 
     whaleTokensLeft--;
+    require(PRICE_PER_WHALE_TOKEN == msg.value, "Ether value sent is not correct");
 
     if (whaleTokenId <= 3 && whaleMyceliaId <=3) {
       whaleMint(msg.sender, whaleMyceliaId, ''); 
@@ -92,6 +91,7 @@ contract CommunityNft is ERC721, ERC721Enumerable, Ownable {
   function getRandomSealNFT() public payable {
     uint256 sealTokenId = 50 + ((block.number / sealTokensLeft) % sealTokensLeft + 1);
     sealTokensLeft--;
+    require(PRICE_PER_SEAL_TOKEN == msg.value, "Ether value sent is not correct");
 
     if (sealTokenId <= 53 && sealMyceliaId <= 53) {
       sealMint(msg.sender, sealMyceliaId, ''); 
@@ -111,6 +111,7 @@ contract CommunityNft is ERC721, ERC721Enumerable, Ownable {
   function getRandomPlanktonNFT() public payable {
     uint256 planktonTokenId = 200 + ((block.number / planktonTokensLeft) % planktonTokensLeft + 1);
     planktonTokensLeft--; 
+    require(PRICE_PER_PLANKTON_TOKEN == msg.value, "Ether value sent is not correct");
 
     if (planktonTokenId <= 203 && planktonMyceliaId <= 203) {
       planktonMint(msg.sender, planktonMyceliaId, '');
@@ -188,7 +189,7 @@ function numAvailableToPlanktonMint(address addr) external view returns (uint8) 
     for (uint256 i = 0; i < addresses.length; i++) {
           _whaleAllowList[addresses[i]] = numAllowedToMint;
     }//how many addresses for whitelist? my suggestion: a total of 45 and people can choose themselves which list they come on
-  } //if no choice is given then by default plankton whitelist? 
+  } //if no preference is given then by default plankton whitelist? 
     
   function setSealAllowList(address[] calldata addresses, uint8 numAllowedToMint) external onlyOwner {
     for (uint256 i = 0; i < addresses.length; i++) {
@@ -203,44 +204,38 @@ function numAvailableToPlanktonMint(address addr) external view returns (uint8) 
   } 
 
   function whaleMintAllowList(uint8 numberOfTokens) external payable {
-      uint256 ts = totalSupply();
-
       require(isWhaleAllowListActive, "Allow list is not active");
       require(numberOfTokens <= _whaleAllowList[msg.sender], "Exceeded max available to purchase");
-      require(ts + numberOfTokens <= MAX_WHALE_SUPPLY, "Purchase would exceed max tokens");
+      //require(ts + numberOfTokens <= MAX_WHALE_SUPPLY, "Purchase would exceed max tokens");
       require(PRICE_PER_WHALE_TOKEN * numberOfTokens <= msg.value, "Ether value sent is not correct");
 
       _whaleAllowList[msg.sender] -= numberOfTokens;
       for (uint256 i = 0; i < numberOfTokens; i++) {
-          whaleMint(msg.sender, ts + i, "");
+          getRandomWhaleNFT();
     }
   }
 
   function sealMintAllowList(uint8 numberOfTokens) external payable {
-      uint256 ts = totalSupply();
-
       require(isSealAllowListActive, "Allow list is not active");
       require(numberOfTokens <= _sealAllowList[msg.sender], "Exceeded max available to purchase");
-      require(ts + numberOfTokens <= MAX_SEAL_SUPPLY, "Purchase would exceed max tokens");
+      //require(ts + numberOfTokens <= MAX_SEAL_SUPPLY, "Purchase would exceed max tokens");
       require(PRICE_PER_SEAL_TOKEN * numberOfTokens <= msg.value, "Ether value sent is not correct");
 
       _sealAllowList[msg.sender] -= numberOfTokens;
       for (uint256 i = 0; i < numberOfTokens; i++) {
-          sealMint(msg.sender, ts + i, "");
+          getRandomSealNFT();
     }
   }
 
   function planktonMintAllowList(uint8 numberOfTokens) external payable {
-      uint256 ts = totalSupply();
-
       require(isPlanktonAllowListActive, "Allow list is not active");
       require(numberOfTokens <= _planktonAllowList[msg.sender], "Exceeded max available to purchase");
-      require(ts + numberOfTokens <= MAX_PLANKTON_SUPPLY, "Purchase would exceed max tokens");
+      //require(ts + numberOfTokens <= MAX_PLANKTON_SUPPLY, "Purchase would exceed max tokens");
       require(PRICE_PER_PLANKTON_TOKEN * numberOfTokens <= msg.value, "Ether value sent is not correct");
 
       _planktonAllowList[msg.sender] -= numberOfTokens;
       for (uint256 i = 0; i < numberOfTokens; i++) {
-          planktonMint(msg.sender, ts + i, "");
+          getRandomPlanktonNFT();
     }
   }
 
