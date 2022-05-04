@@ -126,8 +126,8 @@ describe("CommunityNft", () => {
     });
   });
 
-describe("Setting up a whitelist and let a whitelisted address make a mint of choice", async () => {
-  beforeEach(setupCommunityNft)
+  describe("Setting up a whitelist and let a whitelisted address make a mint of choice", async () => {
+    beforeEach(setupCommunityNft)
 
     it("sets the whitelist while inactive and allows whitelisted addresses to mint Whale NFTs while active", async () => {
       const addressesForWhitelist = [await addresses[0].getAddress(), await addresses[1].getAddress()];
@@ -164,5 +164,11 @@ describe("Setting up a whitelist and let a whitelisted address make a mint of ch
       const recipientBalanceAfterMint = await communityNft.balanceOf(whiteListed);
       expect(recipientBalanceAfterMint).to.equal(1);
     });
+  });
+  describe("updating the URI after mint", async () => {
+    beforeEach(setupCommunityNft)
+
+    it("toggels reveal")
+
   });
 })

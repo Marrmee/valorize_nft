@@ -10,10 +10,10 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 @dev Implementation of a Community Non Fungible Token using ERC721B.
 */
 
-contract CommunityNft is ERC721, Ownable {
-  using Strings for uint256;
+//https://dev.to/lilcoderman/create-a-whitelist-for-your-nft-project-1g55
 
-  bool public REVEAL = false;
+contract CommunityNft is ERC721, Ownable {
+
   bool public isWhaleAllowListActive = false;
   bool public isSealAllowListActive = false;
   bool public isPlanktonAllowListActive = false;
@@ -22,11 +22,10 @@ contract CommunityNft is ERC721, Ownable {
   uint256 public constant PRICE_PER_PLANKTON_TOKEN = 0.1 ether;
   string public URI;
 
-  mapping(address => uint8) private _whaleAllowList;
-  mapping(address => uint8) private _sealAllowList;
-  mapping(address => uint8) private _planktonAllowList;
-  
-  mapping(uint => string) private _URIS;
+  mapping(address => bool) private _whaleAllowList;
+  mapping(address => bool) private _sealAllowList;
+  mapping(address => bool) private _planktonAllowList;
+
 
   uint256 public whaleTokensLeft = 50;
   uint256 public sealTokensLeft = 150;
@@ -54,28 +53,27 @@ contract CommunityNft is ERC721, Ownable {
   ) ERC721(name, symbol) {
     URI = initialURI;
   }
-//random idea: making one extra Mycelia NFT unmintable for 10 years (token ID = 0) create a bid system for it. In those 10 years we can build out our product to something incredibly valuable
-// then give every service for free for the one that buys this NFT.
-
-  // function tokenURI(uint256 tokenId) public view override returns (string memory) {
-  //     if (REVEAL) {
-  //         return string(abi.encodePacked(URI, tokenId.toString()));
-  //     }
-  //     return URI;
-  // }
+//random idea: making one extra Mycelia NFT unmintable for 10 years (token ID = 0) create a bid system for it 
+//==> lock up ether unless bid is higher. Long term vision Valorize DAO
+//In those 10 years we can build out our product to something incredibly valuable
+//then give every service for free for the one that buys this NFT.
+//whitelist number
+//limit per msg.sender/ip address (governor DAO sybil resistance)?
+//
 
   function _safeMint(address to, uint256 tokenId) override internal virtual {
         _safeMint(to, tokenId, "");
-   }
+  }
 
-  function getRandomWhaleNFT() public payable {
-    uint256 whaleTokenId = (block.number / whaleTokensLeft) % whaleTokensLeft + 1; 
+  function mintRandomWhaleNFT() public payable {
+    uint256 i = uint256(uint160(address(msg.sender)));
+    uint256 whaleTokenId = (block.difficulty + i / whaleTokensLeft) % whaleTokensLeft + 1; 
     whaleTokensLeft--;
     require(PRICE_PER_WHALE_TOKEN == msg.value, "Ether value sent is not correct");
 
-    if (whaleTokenId <= 3 && whaleMyceliaId <=3) {
+    if (whaleTokenId <= 3 && whaleMyceliaId <=3) { //remainingWhaleMycelia > 0)
       whaleMint(msg.sender, whaleMyceliaId, ''); 
-      whaleMyceliaId++;
+      whaleMyceliaId++; //remainingWhaleMycelia--; 
     } else if (whaleTokenId <= 18 && whaleObsidianId <=18) {
       whaleMint(msg.sender, whaleObsidianId, ''); 
       whaleObsidianId++;
@@ -85,8 +83,9 @@ contract CommunityNft is ERC721, Ownable {
     }
   }
 
-  function getRandomSealNFT() public payable {
-    uint256 sealTokenId = 50 + ((block.number / sealTokensLeft) % sealTokensLeft + 1);
+  function mintRandomSealNFT() public payable {
+    uint256 i = uint256(uint160(address(msg.sender)));
+    uint256 sealTokenId = 50 + ((block.difficulty + i / sealTokensLeft) % sealTokensLeft + 1);
     sealTokensLeft--;
     require(PRICE_PER_SEAL_TOKEN == msg.value, "Ether value sent is not correct");
 
@@ -104,9 +103,12 @@ contract CommunityNft is ERC721, Ownable {
       sealGoldId++;
     }
   }
-
-  function getRandomPlanktonNFT() public payable {
-    uint256 planktonTokenId = 200 + ((block.number / planktonTokensLeft) % planktonTokensLeft + 1);
+//whitelist number
+//limit per msg.sender/ip address (governor DAO sybil resistance)?
+//
+  function mintRandomPlanktonNFT() public payable {
+    uint256 i = uint256(uint160(address(msg.sender)));
+    uint256 planktonTokenId = 200 + ((block.difficulty + i / planktonTokensLeft) % planktonTokensLeft + 1);
     planktonTokensLeft--; 
     require(PRICE_PER_PLANKTON_TOKEN == msg.value, "Ether value sent is not correct");
 
@@ -128,34 +130,19 @@ contract CommunityNft is ERC721, Ownable {
     }
   }
 
-  function whaleMint(address recipient, uint256 whaleTokenId, bytes memory data) public payable {
+  function whaleMint(address recipient, uint256 whaleTokenId, bytes memory data) internal {
     require(whaleTokenId >= 1 && whaleTokenId <= 50, "the whale NFTs are sold out");
     _safeMint(recipient, whaleTokenId, data);
   }
 
-  function sealMint(address recipient, uint256 sealTokenId, bytes memory data) public payable {
+  function sealMint(address recipient, uint256 sealTokenId, bytes memory data) internal {
     require(sealTokenId >= 51 && sealTokenId <= 200, "the seal NFTs are sold out");
     _safeMint(recipient, sealTokenId, data);
   }
 
-  function planktonMint(address recipient, uint256 planktonTokenId, bytes memory data) public payable {
+  function planktonMint(address recipient, uint256 planktonTokenId, bytes memory data) internal {
     require(planktonTokenId >= 201 && planktonTokenId <= 3000, "the plankton NFTs are sold out");
     _safeMint(recipient, planktonTokenId, data);
-  }
-
-  function toggleReveal(string memory updatedURI) public onlyOwner {
-    REVEAL = !REVEAL;
-    URI = updatedURI;
-  }
-
-  function tokenURI(uint256 tokenId) public view override returns (string memory) {
-    if (REVEAL) {
-      if(bytes(_URIS[tokenId]).length != 0) {
-        return string(_URIS[tokenId]);
-    }
-      return string(abi.encodePacked(URI, tokenId.toString()));
-    }
-    return URI;
   }
 
   function setIsWhaleAllowListActive(bool _isWhaleAllowListActive) external onlyOwner {
@@ -170,55 +157,49 @@ contract CommunityNft is ERC721, Ownable {
       isPlanktonAllowListActive = _isPlanktonAllowListActive;
   }
 
-  function numAvailableToWhaleMint(address addr) external view returns (uint8) {
+  function numAvailableToWhaleMint(address addr) external view returns (bool) {
         return _whaleAllowList[addr];
   }
 
-function numAvailableToSealMint(address addr) external view returns (uint8) {
+function numAvailableToSealMint(address addr) external view returns (bool) {
         return _sealAllowList[addr];
   }
 
-function numAvailableToPlanktonMint(address addr) external view returns (uint8) {
+function numAvailableToPlanktonMint(address addr) external view returns (bool) {
         return _planktonAllowList[addr];
   }
 
-  function setWhaleAllowList(address[] calldata addresses, uint8 numAllowedToMint) external onlyOwner {
+  function setWhaleAllowList(address[] calldata addresses) external onlyOwner {
     for (uint256 i = 0; i < addresses.length; i++) {
-          _whaleAllowList[addresses[i]] = numAllowedToMint;
+          _whaleAllowList[addresses[i]] = true;
     }//how many addresses for whitelist? my suggestion: a total of 45 and people can choose themselves which list they come on
   } //if no preference is given then by default plankton whitelist? 
     
-  function setSealAllowList(address[] calldata addresses, uint8 numAllowedToMint) external onlyOwner {
+  function setSealAllowList(address[] calldata addresses) external onlyOwner {
     for (uint256 i = 0; i < addresses.length; i++) {
-          _sealAllowList[addresses[i]] = numAllowedToMint;
+          _sealAllowList[addresses[i]] = true;
     }
   } 
 
-  function setPlanktonAllowList(address[] calldata addresses, uint8 numAllowedToMint) external onlyOwner {
+  function setPlanktonAllowList(address[] calldata addresses) external onlyOwner {
     for (uint256 i = 0; i < addresses.length; i++) {
-          _planktonAllowList[addresses[i]] = numAllowedToMint;
+          _planktonAllowList[addresses[i]] = true;
     }
   } 
 
-  function whaleMintAllowList(uint8 numberOfTokens) external payable {
+  function whaleMintAllowList() external payable { //see if we can consolidate logic//dry:dont repeat yourself
       require(isWhaleAllowListActive, "Allow list is not active");
-      require(numberOfTokens <= _whaleAllowList[msg.sender], "Exceeded max available to purchase");
       require(PRICE_PER_WHALE_TOKEN * numberOfTokens <= msg.value, "Ether value sent is not correct");
-
-      _whaleAllowList[msg.sender] -= numberOfTokens;
-      for (uint256 i = 0; i < numberOfTokens; i++) {
-          getRandomWhaleNFT();
+      _whaleAllowList[msg.sender] = false;
+      mintRandomWhaleNFT();
     }
   }
 
-  function sealMintAllowList(uint8 numberOfTokens) external payable {
+  function sealMintAllowList() external payable {
       require(isSealAllowListActive, "Allow list is not active");
-      require(numberOfTokens <= _sealAllowList[msg.sender], "Exceeded max available to purchase");
       require(PRICE_PER_SEAL_TOKEN * numberOfTokens <= msg.value, "Ether value sent is not correct");
-
-      _sealAllowList[msg.sender] -= numberOfTokens;
-      for (uint256 i = 0; i < numberOfTokens; i++) {
-          getRandomSealNFT();
+      _whaleAllowList[msg.sender] = false;
+          mintRandomSealNFT();
     }
   }
 
@@ -229,7 +210,7 @@ function numAvailableToPlanktonMint(address addr) external view returns (uint8) 
 
       _planktonAllowList[msg.sender] -= numberOfTokens;
       for (uint256 i = 0; i < numberOfTokens; i++) {
-          getRandomPlanktonNFT();
+          mintRandomPlanktonNFT();
     }
   }
 }
