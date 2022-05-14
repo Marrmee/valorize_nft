@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: Unlicense
-pragma solidity ^0.8.6;
+pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -10,16 +10,16 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 @dev Implementation of a Membership Non Fungible Token using ERC721.
 */
 
-contract MembershipNft_V2 is ERC721, Ownable {
+contract MembershipNft is ERC721, Ownable {
 
   bool public isAllowListActive = false;
   string public URI;
   uint256 public whaleTokensLeft = 50;
   uint256 public sealTokensLeft = 150;
   uint256 public planktonTokensLeft = 2800;
-  mapping(address => bool) public _allowList;
-  mapping(address => uint256) public _choiceList;
-  mapping(string => RemainingMints) RarityTraitsByKey;
+  mapping(address => bool) public AllowList;
+  mapping(address => uint256) public ChoiceList;
+  mapping(string => RemainingMints) public RarityTraitsByKey;
   RemainingMints remainingMints;
   
   struct RemainingMints {
@@ -132,7 +132,7 @@ contract MembershipNft_V2 is ERC721, Ownable {
   }
 
   function numAvailableToMint(address addr) external view returns (bool) {
-        return _allowList[addr];
+        return AllowList[addr];
   }
 
   //this function forces us to set the allow list (at least) three times
@@ -143,41 +143,41 @@ contract MembershipNft_V2 is ERC721, Ownable {
   //         _allowList[addresses[i]] = true;
   //         _choiceList[addresses[i]] = choice;
   // }
-
+//this function should now get one mapping _allowList that contains addresses with choice 1, 2 or 3
   function setAllowLists(
     address[] calldata whaleAddresses, 
     address[] calldata sealAddresses,
     address[] calldata planktonAddresses) external onlyOwner {
     for (uint256 i = 0; i < whaleAddresses.length; i++) {
-          _allowList[whaleAddresses[i]] = true;
-          _choiceList[whaleAddresses[i]] = 1; 
+          AllowList[whaleAddresses[i]] = true;
+          ChoiceList[whaleAddresses[i]] = 1; 
     }
     for (uint256 i = 0; i < sealAddresses.length; i++) {
-          _allowList[sealAddresses[i]] = true;
-          _choiceList[sealAddresses[i]] = 2;
+          AllowList[sealAddresses[i]] = true;
+          ChoiceList[sealAddresses[i]] = 2;
     }
     for (uint256 i = 0; i < planktonAddresses.length; i++) {
-          _allowList[planktonAddresses[i]] = true;
-          _choiceList[planktonAddresses[i]] = 3; 
+          AllowList[planktonAddresses[i]] = true;
+          ChoiceList[planktonAddresses[i]] = 3; 
     }
   }
 
 
   function allowListMint() external payable {
     require(isAllowListActive == true, "Allow list is not active");
-    require(_allowList[msg.sender] == true, "you already minted an NFT");
-    if (_choiceList[msg.sender] == 1) {
+    require(AllowList[msg.sender] == true, "you already minted an NFT");
+    if (ChoiceList[msg.sender] == 1) {
       require(1.0 ether <= msg.value, "Ether value sent is not correct");
       mintRandomWhaleNFT();
-      _allowList[msg.sender] = false;
-    } else if (_choiceList[msg.sender] == 2) {
+      AllowList[msg.sender] = false;
+    } else if (ChoiceList[msg.sender] == 2) {
       require(0.2 ether <= msg.value, "Ether value sent is not correct");
       mintRandomSealNFT();
-      _allowList[msg.sender] = false;
-    } else if (_choiceList[msg.sender] == 3) {
+      AllowList[msg.sender] = false;
+    } else if (ChoiceList[msg.sender] == 3) {
       require(0.1 ether <= msg.value, "Ether value sent is not correct");
       mintRandomPlanktonNFT();
-      _allowList[msg.sender] = false;
+      AllowList[msg.sender] = false;
     }
   }
 }

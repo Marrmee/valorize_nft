@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-import "./MembershipNft_V2.sol";
+import "./MembershipNft.sol";
 
 /**
 @title MembershipNft
@@ -10,13 +10,13 @@ import "./MembershipNft_V2.sol";
 @dev Implementation of a Membership Non Fungible Token using ERC721B.
 */
 
-contract ExposedMembershipNft is MembershipNft_V2 {
+contract ExposedMembershipNft is MembershipNft {
 
     constructor (
         string memory _name, 
         string memory _symbol, 
         string memory _URI_
-    ) MembershipNft_V2(_name, _symbol, _URI_) {
+    ) MembershipNft(_name, _symbol, _URI_) {
         URI = _URI_;
     }
 

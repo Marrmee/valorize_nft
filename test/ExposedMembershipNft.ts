@@ -70,7 +70,7 @@ describe("ExposedMembershipNft", () => {
     beforeEach(setupMembershipNft)
 
     it("mints a mycelia NFT using whaleMint", async () => {
-      const whaleMyceliaId = await membershipNft.RarityTraitsByKey("Whale").Mycelia();
+      const whaleMyceliaId = await (await membershipNft.RarityTraitsByKey("Whale")).Mycelia;
       const recipientAddress = await addresses[0].getAddress();
       const data = '0x12345678';
       await membershipNft.whaleMint(recipientAddress, whaleMyceliaId, data);
@@ -79,7 +79,7 @@ describe("ExposedMembershipNft", () => {
     });
 
     it("mints a diamond NFT using sealMint", async () => {
-      const sealDiamondId = await membershipNft.RarityTraitsByKey("Seal").Diamond();
+      const sealDiamondId = await (await membershipNft.RarityTraitsByKey("Seal")).Diamond;
       const recipientAddress = await addresses[0].getAddress();
       const data = '0x12345678';
       await membershipNft.sealMint(recipientAddress, sealDiamondId, data);
@@ -88,7 +88,7 @@ describe("ExposedMembershipNft", () => {
     });
 
     it("mints a silver NFT using planktonMint", async () => {
-      const planktonSilverId = await membershipNft.RarityTraitsByKey("Plankton").Silver();
+      const planktonSilverId = await (await membershipNft.RarityTraitsByKey("Plankton")).Silver;
       const recipientAddress = await addresses[0].getAddress();
       const data = '0x12345678';
       await membershipNft.planktonMint(recipientAddress, planktonSilverId, data);
@@ -97,7 +97,7 @@ describe("ExposedMembershipNft", () => {
     });
 
     it("reverts the minting of NFTs using whaleMint when tokenIds 1 to 50 are not available", async () => {
-      const planktonSilverId = await membershipNft.RarityTraitsByKey("Plankton").Silver();
+      const planktonSilverId = await (await membershipNft.RarityTraitsByKey("Plankton")).Silver;
       const recipientAddress = await addresses[0].getAddress();
       const data = '0x12345678';
       
@@ -107,7 +107,7 @@ describe("ExposedMembershipNft", () => {
     });
 
     it("reverts the minting of NFTs using sealMint when tokenIds 51 to 200 are not available", async () => {
-      const planktonSilverId = await membershipNft.RarityTraitsByKey("Plankton").Silver();
+      const planktonSilverId = await (await membershipNft.RarityTraitsByKey("Plankton")).Silver;
       const recipientAddress = await addresses[0].getAddress();
       const data = '0x12345678';
       
@@ -117,7 +117,7 @@ describe("ExposedMembershipNft", () => {
     });
 
     it("reverts the minting of NFTs using planktonMint when tokenIds 201 to 3000 are not available", async () => {
-      const whaleDiamondId = await membershipNft.RarityTraitsByKey("Whale").Diamond();
+      const whaleDiamondId = await (await membershipNft.RarityTraitsByKey("Whale")).Diamond;
       const recipientAddress = await addresses[0].getAddress();
       const data = '0x12345678';
       await expect(membershipNft.planktonMint(recipientAddress, whaleDiamondId, data)
@@ -134,7 +134,7 @@ describe("ExposedMembershipNft", () => {
       const sealAddresses = [await addresses[2].getAddress(), await addresses[3].getAddress()];
       const planktonAddresses = [await addresses[4].getAddress(), await addresses[5].getAddress()];
       await membershipNft.setAllowLists(whaleAddresses, sealAddresses, planktonAddresses);
-      expect(await membershipNft._allowList(planktonAddresses[0])).to.equal(true);
+      expect(await membershipNft.AllowList(planktonAddresses[0])).to.equal(true);
     });
 
     it("sets allowlisted addresses to NFT choice", async () => {
@@ -142,7 +142,7 @@ describe("ExposedMembershipNft", () => {
       const sealAddresses = [await addresses[2].getAddress(), await addresses[3].getAddress()];
       const planktonAddresses = [await addresses[4].getAddress(), await addresses[5].getAddress()];
       await membershipNft.setAllowLists(whaleAddresses, sealAddresses, planktonAddresses);
-      expect(await membershipNft._choiceList(sealAddresses[0])).to.equal(2);
+      expect(await membershipNft.ChoiceList(sealAddresses[0])).to.equal(2);
     });
 
     it("sets the allowlist while inactive and allows minting while the allow list is active", async () => {
@@ -171,7 +171,7 @@ describe("ExposedMembershipNft", () => {
     beforeEach(setupMembershipNft)
 
     it("sets the token URI", async() => {
-      const whaleMyceliaId = await membershipNft.RarityTraitsByKey("Whale").Mycelia();
+      const whaleMyceliaId = await (await membershipNft.RarityTraitsByKey("Whale")).Mycelia;
       const recipientAddress = await addresses[0].getAddress();
       const data = '0x12345678';
       await membershipNft.whaleMint(recipientAddress, whaleMyceliaId, data);
