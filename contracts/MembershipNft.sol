@@ -63,7 +63,6 @@ contract MembershipNft is ERC721, Ownable {
       RarityTraitsByKey["Whale"].Obsidian--;
     } else if (whaleTokenId <= 50 && RarityTraitsByKey["Whale"].Diamond >= 19) {
       _whaleMint(msg.sender, RarityTraitsByKey["Whale"].Diamond, ''); 
-
       RarityTraitsByKey["Whale"].Diamond--;
     }
   }
