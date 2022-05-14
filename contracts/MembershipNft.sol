@@ -63,6 +63,7 @@ contract MembershipNft is ERC721, Ownable {
       RarityTraitsByKey["Whale"].Obsidian--;
     } else if (whaleTokenId <= 50 && RarityTraitsByKey["Whale"].Diamond >= 19) {
       _whaleMint(msg.sender, RarityTraitsByKey["Whale"].Diamond, ''); 
+
       RarityTraitsByKey["Whale"].Diamond--;
     }
   }
@@ -82,9 +83,9 @@ contract MembershipNft is ERC721, Ownable {
     } else if (sealTokenId <= 125 && RarityTraitsByKey["Seal"].Diamond >= 69) {
       _sealMint(msg.sender, RarityTraitsByKey["Seal"].Diamond, ''); 
       RarityTraitsByKey["Seal"].Diamond--;
-    } else if (sealTokenId <= 200 && RarityTraitsByKey["Seal"].Silver >= 126) {
-      _sealMint(msg.sender, RarityTraitsByKey["Seal"].Silver, ''); 
-      RarityTraitsByKey["Seal"].Silver--;
+    } else if (sealTokenId <= 200 && RarityTraitsByKey["Seal"].Gold >= 126) {
+      _sealMint(msg.sender, RarityTraitsByKey["Seal"].Gold, ''); 
+      RarityTraitsByKey["Seal"].Gold--;
     }
   }
 
