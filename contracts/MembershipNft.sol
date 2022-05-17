@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/token/common/ERC2981.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
@@ -10,18 +11,25 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 @dev Implementation of a Membership Non Fungible Token using ERC721.
 */
 
-contract MembershipNft is ERC721, Ownable {
+contract MembershipNft is ERC721, ERC2981, Ownable {
 
   bool public isAllowListActive = false;
   string public URI;
+  uint256 public constant PRICE_PER_WHALE_TOKEN = 1.0 ether;
+  uint256 public constant PRICE_PER_SEAL_TOKEN = 0.2 ether;
+  uint256 public constant PRICE_PER_PLANKTON_TOKEN = 0.1 ether;
   uint256 public whaleTokensLeft = 50;
   uint256 public sealTokensLeft = 150;
   uint256 public planktonTokensLeft = 2800;
+  uint16 startSeal;
+  uint16 startPlankton;
   mapping(address => bool) public AllowList;
   mapping(address => uint256) public ChoiceList;
   mapping(string => RemainingMints) public RarityTraitsByKey;
-  RemainingMints remainingMints;
-  
+  uint16[] remainingWhaleTokenIds;
+  uint16[] remainingSealTokenIds;
+  uint16[] remainingPlanktonTokenIds;
+
   struct RemainingMints {
     uint16 Mycelia;
     uint16 Obsidian;
@@ -31,14 +39,27 @@ contract MembershipNft is ERC721, Ownable {
   }
 
   constructor(
-    string memory name, 
-    string memory symbol, 
-    string memory _URI
-  ) ERC721(name, symbol) {
+    string memory _name, 
+    string memory _symbol, 
+    string memory _URI,
+    uint16 _startSeal,
+    uint16 _startPlankton,
+    uint16[] memory _remainingWhaleTokenIds,
+    uint16[] memory _remainingSealTokenIds,
+    uint16[] memory _remainingPlanktonTokenIds
+
+    // address[] memory royaltySplit,
+    // address[] memory generativeRoyalty
+  ) ERC721(_name, _symbol) {
     URI = _URI;
-    RarityTraitsByKey["Whale"] = RemainingMints(3, 18, 50, 0, 0);
-    RarityTraitsByKey["Seal"] = RemainingMints(53, 68, 125, 200, 0);
-    RarityTraitsByKey["Plankton"] = RemainingMints(203, 223, 375, 1300, 3000);
+    startSeal = _startSeal;
+    startPlankton = _startPlankton;
+    remainingWhaleTokenIds = _remainingWhaleTokenIds;
+    remainingSealTokenIds = _remainingSealTokenIds;
+    remainingPlanktonTokenIds = _remainingPlanktonTokenIds;
+    RarityTraitsByKey["Whale"] = RemainingMints(remainingWhaleTokenIds[0], remainingWhaleTokenIds[1], remainingWhaleTokenIds[2], 0, 0);
+    RarityTraitsByKey["Seal"] = RemainingMints(remainingSealTokenIds[0], remainingSealTokenIds[1], remainingSealTokenIds[2], remainingSealTokenIds[3], 0);
+    RarityTraitsByKey["Plankton"] = RemainingMints(remainingPlanktonTokenIds[0], remainingPlanktonTokenIds[1], remainingPlanktonTokenIds[2], remainingPlanktonTokenIds[3], remainingPlanktonTokenIds[4]);
   }
 
   function _baseURI() internal view override returns (string memory) {
@@ -53,15 +74,15 @@ contract MembershipNft is ERC721, Ownable {
     uint256 i = uint256(uint160(address(msg.sender)));
     uint256 whaleTokenId = (block.difficulty + i / whaleTokensLeft) % whaleTokensLeft + 1; 
     whaleTokensLeft--;
-    require(1.0 ether <= msg.value, "Ether value sent is not correct");
+    require(PRICE_PER_WHALE_TOKEN <= msg.value, "Ether value sent is not correct");
 
-    if (whaleTokenId <= 3 && RarityTraitsByKey["Whale"].Mycelia > 0) {
+    if (whaleTokenId <= remainingWhaleTokenIds[0] && RarityTraitsByKey["Whale"].Mycelia > 0) {
       _whaleMint(msg.sender, RarityTraitsByKey["Whale"].Mycelia, ''); 
       RarityTraitsByKey["Whale"].Mycelia--;
-    } else if (whaleTokenId <= 18 && RarityTraitsByKey["Whale"].Obsidian >= 4) {
+    } else if (whaleTokenId <= remainingWhaleTokenIds[1] && RarityTraitsByKey["Whale"].Obsidian >= (remainingWhaleTokenIds[0]+1)) {
       _whaleMint(msg.sender, RarityTraitsByKey["Whale"].Obsidian, ''); 
       RarityTraitsByKey["Whale"].Obsidian--;
-    } else if (whaleTokenId <= 50 && RarityTraitsByKey["Whale"].Diamond >= 19) {
+    } else if (whaleTokenId <= remainingWhaleTokenIds[2] && RarityTraitsByKey["Whale"].Diamond >= (remainingWhaleTokenIds[1]+1)) {
       _whaleMint(msg.sender, RarityTraitsByKey["Whale"].Diamond, ''); 
       RarityTraitsByKey["Whale"].Diamond--;
     }
@@ -69,20 +90,20 @@ contract MembershipNft is ERC721, Ownable {
 
   function mintRandomSealNFT() public payable {
     uint256 i = uint256(uint160(address(msg.sender)));
-    uint256 sealTokenId = 50 + ((block.difficulty + i / sealTokensLeft) % sealTokensLeft + 1);
+    uint256 sealTokenId = startSeal + ((block.difficulty + i / sealTokensLeft) % sealTokensLeft + 1);
     sealTokensLeft--;
-    require(0.2 ether <= msg.value, "Ether value sent is not correct");
+    require(PRICE_PER_SEAL_TOKEN <= msg.value, "Ether value sent is not correct");
 
-    if (sealTokenId <= 53 && RarityTraitsByKey["Seal"].Mycelia >= 51) {
+    if (sealTokenId <= remainingSealTokenIds[0] && RarityTraitsByKey["Seal"].Mycelia >= (startSeal + 1)) {
       _sealMint(msg.sender, RarityTraitsByKey["Seal"].Mycelia, ''); 
       RarityTraitsByKey["Seal"].Mycelia--;
-    } else if (sealTokenId <= 68 && RarityTraitsByKey["Seal"].Obsidian >= 54) {
+    } else if (sealTokenId <= remainingSealTokenIds[1] && RarityTraitsByKey["Seal"].Obsidian >= (remainingSealTokenIds[0] + 1)) {
       _sealMint(msg.sender, RarityTraitsByKey["Seal"].Obsidian, '');
       RarityTraitsByKey["Seal"].Obsidian--;
-    } else if (sealTokenId <= 125 && RarityTraitsByKey["Seal"].Diamond >= 69) {
+    } else if (sealTokenId <= remainingSealTokenIds[2] && RarityTraitsByKey["Seal"].Diamond >= (remainingSealTokenIds[1] + 1)) {
       _sealMint(msg.sender, RarityTraitsByKey["Seal"].Diamond, ''); 
       RarityTraitsByKey["Seal"].Diamond--;
-    } else if (sealTokenId <= 200 && RarityTraitsByKey["Seal"].Gold >= 126) {
+    } else if (sealTokenId <= remainingSealTokenIds[3] && RarityTraitsByKey["Seal"].Gold >= (remainingSealTokenIds[2] + 1)) {
       _sealMint(msg.sender, RarityTraitsByKey["Seal"].Gold, ''); 
       RarityTraitsByKey["Seal"].Gold--;
     }
@@ -90,40 +111,40 @@ contract MembershipNft is ERC721, Ownable {
 
   function mintRandomPlanktonNFT() public payable {
     uint256 i = uint256(uint160(address(msg.sender)));
-    uint256 planktonTokenId = 200 + ((block.difficulty + i / planktonTokensLeft) % planktonTokensLeft + 1);
+    uint256 planktonTokenId = startPlankton + ((block.difficulty + i / planktonTokensLeft) % planktonTokensLeft + 1);
     planktonTokensLeft--; 
-    require(0.1 ether <= msg.value, "Ether value sent is not correct");
+    require(PRICE_PER_PLANKTON_TOKEN <= msg.value, "Ether value sent is not correct");
 
-    if (planktonTokenId <= 203 && RarityTraitsByKey["Plankton"].Mycelia >= 201) {
+    if (planktonTokenId <= remainingPlanktonTokenIds[0] && RarityTraitsByKey["Plankton"].Mycelia >= (startPlankton + 1)) {
       _planktonMint(msg.sender, RarityTraitsByKey["Plankton"].Mycelia, '');
       RarityTraitsByKey["Plankton"].Mycelia--;
-    } else if (planktonTokenId <= 223 && RarityTraitsByKey["Plankton"].Obsidian >= 204) {
+    } else if (planktonTokenId <= remainingPlanktonTokenIds[1] && RarityTraitsByKey["Plankton"].Obsidian >= (remainingPlanktonTokenIds[0] + 1)) {
       _planktonMint(msg.sender, RarityTraitsByKey["Plankton"].Obsidian, ''); 
       RarityTraitsByKey["Plankton"].Obsidian--;
-    } else if (planktonTokenId <= 375  && RarityTraitsByKey["Plankton"].Diamond >= 224) {
+    } else if (planktonTokenId <= remainingPlanktonTokenIds[2]  && RarityTraitsByKey["Plankton"].Diamond >= (remainingPlanktonTokenIds[1] + 1)) {
       _planktonMint(msg.sender, RarityTraitsByKey["Plankton"].Diamond, '');
       RarityTraitsByKey["Plankton"].Diamond--;
-    } else if (planktonTokenId <= 1300 && RarityTraitsByKey["Plankton"].Gold >= 376) {
+    } else if (planktonTokenId <= remainingPlanktonTokenIds[3] && RarityTraitsByKey["Plankton"].Gold >= (remainingPlanktonTokenIds[2] + 1)) {
       _planktonMint(msg.sender, RarityTraitsByKey["Plankton"].Gold, ''); 
       RarityTraitsByKey["Plankton"].Gold--;
-    } else if (planktonTokenId <= 3000 && RarityTraitsByKey["Plankton"].Silver >= 1301) {
+    } else if (planktonTokenId <= remainingPlanktonTokenIds[4] && RarityTraitsByKey["Plankton"].Silver >= (remainingPlanktonTokenIds[3] + 1)) {
       _planktonMint(msg.sender, RarityTraitsByKey["Plankton"].Silver, ''); 
       RarityTraitsByKey["Plankton"].Silver--;
     }
   }
 
   function _whaleMint(address recipient, uint256 whaleTokenId, bytes memory data) internal {
-    require(whaleTokenId >= 1 && whaleTokenId <= 50, "the whale NFTs are sold out");
+    require(whaleTokenId >= 1 && whaleTokenId <= remainingWhaleTokenIds[2], "the whale NFTs are sold out");
     _safeMint(recipient, whaleTokenId, data);
   }
 
   function _sealMint(address recipient, uint256 sealTokenId, bytes memory data) internal {
-    require(sealTokenId >= 51 && sealTokenId <= 200, "the seal NFTs are sold out");
+    require(sealTokenId >= (remainingWhaleTokenIds[2] + 1) && sealTokenId <= remainingSealTokenIds[3], "the seal NFTs are sold out");
     _safeMint(recipient, sealTokenId, data);
   }
 
   function _planktonMint(address recipient, uint256 planktonTokenId, bytes memory data) internal {
-    require(planktonTokenId >= 201 && planktonTokenId <= 3000, "the plankton NFTs are sold out");
+    require(planktonTokenId >= (remainingSealTokenIds[3] + 1) && planktonTokenId <= remainingPlanktonTokenIds[4], "the plankton NFTs are sold out");
     _safeMint(recipient, planktonTokenId, data);
   }
 
@@ -162,22 +183,26 @@ contract MembershipNft is ERC721, Ownable {
     }
   }
 
-
   function allowListMint() external payable {
     require(isAllowListActive == true, "Allow list is not active");
     require(AllowList[msg.sender] == true, "you already minted an NFT");
     if (ChoiceList[msg.sender] == 1) {
-      require(1.0 ether <= msg.value, "Ether value sent is not correct");
+      require(PRICE_PER_WHALE_TOKEN <= msg.value, "Ether value sent is not correct");
       mintRandomWhaleNFT();
       AllowList[msg.sender] = false;
     } else if (ChoiceList[msg.sender] == 2) {
-      require(0.2 ether <= msg.value, "Ether value sent is not correct");
+      require(PRICE_PER_SEAL_TOKEN <= msg.value, "Ether value sent is not correct");
       mintRandomSealNFT();
       AllowList[msg.sender] = false;
     } else if (ChoiceList[msg.sender] == 3) {
-      require(0.1 ether <= msg.value, "Ether value sent is not correct");
+      require(PRICE_PER_PLANKTON_TOKEN <= msg.value, "Ether value sent is not correct");
       mintRandomPlanktonNFT();
       AllowList[msg.sender] = false;
     }
   }
+
+  function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721, ERC2981) returns (bool) {
+    return interfaceId == type(IERC2981).interfaceId || super.supportsInterface(interfaceId);
+  }
+
 }

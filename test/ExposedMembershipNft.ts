@@ -13,6 +13,11 @@ const { expect } = chai;
 const INITIAL_URI = "https://token-cdn-domain/";
 const NAME = "ValorizeNFT";
 const SYMBOL = "VALOR";
+const START_SEAL = 50;
+const START_PLANKTON = 200;
+const REMAINING_WHALE_TOKEN_IDS = [3, 18, 50, 0, 0];
+const REMAINING_SEAL_TOKEN_IDS = [53, 68, 125, 200, 0];
+const REMAINING_PLANKTON_TOKEN_IDS = [203, 223, 375, 1300, 3000];
 
 describe("ExposedMembershipNft", () => {
   let membershipNft: ExposedMembershipNft,
@@ -25,7 +30,7 @@ describe("ExposedMembershipNft", () => {
   const setupMembershipNft = async () => {
     [deployer, admin1, admin2, vault, ...addresses] = await ethers.getSigners();
     membershipNft = await new ExposedMembershipNftFactory(deployer).deploy(NAME, SYMBOL,
-      INITIAL_URI,
+      INITIAL_URI, START_SEAL, START_PLANKTON, REMAINING_WHALE_TOKEN_IDS, REMAINING_SEAL_TOKEN_IDS, REMAINING_PLANKTON_TOKEN_IDS,
     );
     await membershipNft.deployed();
   };
@@ -77,7 +82,7 @@ describe("ExposedMembershipNft", () => {
       const recipientBalanceAfterMint = await membershipNft.balanceOf(recipientAddress);
       expect(recipientBalanceAfterMint).to.equal(1);
     });
-
+    
     it("mints a diamond NFT using sealMint", async () => {
       const sealDiamondId = await (await membershipNft.RarityTraitsByKey("Seal")).Diamond;
       const recipientAddress = await addresses[0].getAddress();
