@@ -1,8 +1,9 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.0;
 
+import "./RoyaltyDistributor.sol";
+import "./WhiteListed.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "@openzeppelin/contracts/token/common/ERC2981.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
@@ -11,9 +12,8 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 @dev Implementation of a Membership Non Fungible Token using ERC721.
 */
 
-contract MembershipNft is ERC721, ERC2981, Ownable {
+contract MembershipNft is ERC721, WhiteListed {
 
-  bool public isAllowListActive = false;
   string public URI;
   uint256 public constant PRICE_PER_WHALE_TOKEN = 1.0 ether;
   uint256 public constant PRICE_PER_SEAL_TOKEN = 0.2 ether;
@@ -23,12 +23,11 @@ contract MembershipNft is ERC721, ERC2981, Ownable {
   uint256 public planktonTokensLeft = 2800;
   uint16 startSeal;
   uint16 startPlankton;
-  mapping(address => bool) public AllowList;
-  mapping(address => uint256) public ChoiceList;
-  mapping(string => RemainingMints) public RarityTraitsByKey;
   uint16[] remainingWhaleTokenIds;
   uint16[] remainingSealTokenIds;
   uint16[] remainingPlanktonTokenIds;
+
+  mapping(string => RemainingMints) public RarityTraitsByKey;
 
   struct RemainingMints {
     uint16 Mycelia;
@@ -47,9 +46,6 @@ contract MembershipNft is ERC721, ERC2981, Ownable {
     uint16[] memory _remainingWhaleTokenIds,
     uint16[] memory _remainingSealTokenIds,
     uint16[] memory _remainingPlanktonTokenIds
-
-    // address[] memory royaltySplit,
-    // address[] memory generativeRoyalty
   ) ERC721(_name, _symbol) {
     URI = _URI;
     startSeal = _startSeal;
@@ -75,7 +71,7 @@ contract MembershipNft is ERC721, ERC2981, Ownable {
     uint256 whaleTokenId = (block.difficulty + i / whaleTokensLeft) % whaleTokensLeft + 1; 
     whaleTokensLeft--;
     require(PRICE_PER_WHALE_TOKEN <= msg.value, "Ether value sent is not correct");
-
+//test to see if changing the number of the mint gives a different rarity call 
     if (whaleTokenId <= remainingWhaleTokenIds[0] && RarityTraitsByKey["Whale"].Mycelia > 0) {
       _whaleMint(msg.sender, RarityTraitsByKey["Whale"].Mycelia, ''); 
       RarityTraitsByKey["Whale"].Mycelia--;
@@ -148,41 +144,10 @@ contract MembershipNft is ERC721, ERC2981, Ownable {
     _safeMint(recipient, planktonTokenId, data);
   }
 
-  function setIsAllowListActive(bool _isAllowListActive) external onlyOwner {
-      isAllowListActive = _isAllowListActive;
-  }
-
-  function numAvailableToMint(address addr) external view returns (bool) {
-        return AllowList[addr];
-  }
-
-  //this function forces us to set the allow list (at least) three times
-  //sort the list of addresses based on choice and then set the list three times
-
-  // function setAllowList(address[] calldata addresses, uint256 choice) external onlyOwner {
-  //   for (uint256 i = 0; i < addresses.length; i++) {
-  //         _allowList[addresses[i]] = true;
-  //         _choiceList[addresses[i]] = choice;
+  // function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721, ERC2981) returns (bool) {
+  //   return interfaceId == type(IERC2981).interfaceId || super.supportsInterface(interfaceId);
   // }
-//this function should now get one mapping _allowList that contains addresses with choice 1, 2 or 3
-  function setAllowLists(
-    address[] calldata whaleAddresses, 
-    address[] calldata sealAddresses,
-    address[] calldata planktonAddresses) external onlyOwner {
-    for (uint256 i = 0; i < whaleAddresses.length; i++) {
-          AllowList[whaleAddresses[i]] = true;
-          ChoiceList[whaleAddresses[i]] = 1; 
-    }
-    for (uint256 i = 0; i < sealAddresses.length; i++) {
-          AllowList[sealAddresses[i]] = true;
-          ChoiceList[sealAddresses[i]] = 2;
-    }
-    for (uint256 i = 0; i < planktonAddresses.length; i++) {
-          AllowList[planktonAddresses[i]] = true;
-          ChoiceList[planktonAddresses[i]] = 3; 
-    }
-  }
-
+  
   function allowListMint() external payable {
     require(isAllowListActive == true, "Allow list is not active");
     require(AllowList[msg.sender] == true, "you already minted an NFT");
@@ -200,9 +165,4 @@ contract MembershipNft is ERC721, ERC2981, Ownable {
       AllowList[msg.sender] = false;
     }
   }
-
-  function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721, ERC2981) returns (bool) {
-    return interfaceId == type(IERC2981).interfaceId || super.supportsInterface(interfaceId);
-  }
-
 }

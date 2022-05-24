@@ -184,4 +184,17 @@ describe("ExposedMembershipNft", () => {
       expect(findTokenURI).to.equal("https://token-cdn-domain/3")
     });
   });
+
+  describe("Set Token Royalties for Artists with Unique and Generative Art", async () => {
+    beforeEach(setupMembershipNft)
+
+    it("sets and returns the unique art token royalty amount", async () => {
+      const uniqueArtists = [await addresses[0].getAddress(), await addresses[4].getAddress(), await addresses[8].getAddress()];
+      const myceliaTokenIds = [1, 5, 9];
+      await membershipNft._setUniqueTokenRoyalty(myceliaTokenIds, uniqueArtists);
+      //await membershipNft.uniqueTokenRoyaltyInfo(5, ethers.utils.parseEther("1.0"));
+      const artistAddress = await (await membershipNft._uniqueTokenRoyaltyInfo(5)).receiver;
+      expect(artistAddress).to.equal(addresses[4].getAddress());
+    });
+  })
 })
