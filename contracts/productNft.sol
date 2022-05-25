@@ -12,14 +12,14 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 @dev Implementation of a Membership Non Fungible Token using ERC721.
 */
 
-contract productNft is ERC721, Ownable {
+contract ProductNft is ERC721, Ownable {
   string public URI;
   uint256 public constant PRICE_PER_RARE_TOKEN = 1.5 ether;
   uint256 public constant PRICE_PER_RARER_TOKEN = 0.55 ether;
   uint256 public constant PRICE_PER_DISTANT_TOKEN = 0.2 ether;
-  uint256 public rarestTokensLeft = 10;
-  uint256 public rarerTokensLeft = 1000;
-  uint256 public rareTokensLeft = 1000;
+  uint256 public rarestTokensLeft;
+  uint256 public rarerTokensLeft;
+  uint256 public rareTokensLeft;
   uint16 startRarer;
   uint16 startRare;
   uint16[] remainingRarerTokenIds;
@@ -39,11 +39,17 @@ contract productNft is ERC721, Ownable {
     string memory _URI,
     uint16 _startRarer,
     uint16 _startRare,
+    uint16 _rarestTokensLeft,
+    uint16 _rarerTokensLeft,
+    uint16 _rareTokensLeft,
     uint16[] memory _remainingRarerTokenIds
     ) ERC721(_name, _symbol) {
         URI = _URI;
         startRarer = _startRarer;
         startRare = _startRare;
+        rarestTokensLeft = _rarestTokensLeft;
+        rarerTokensLeft = _rarerTokensLeft;
+        rareTokensLeft = _rareTokensLeft;
         remainingRarerTokenIds = _remainingRarerTokenIds;
         RarityTraitsByKey["Rarer"] = RemainingRarerMints(remainingRarerTokenIds[0], remainingRarerTokenIds[1], remainingRarerTokenIds[2]);
     }

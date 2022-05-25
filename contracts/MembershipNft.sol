@@ -18,9 +18,9 @@ contract MembershipNft is ERC721, WhiteListed {
   uint256 public constant PRICE_PER_WHALE_TOKEN = 1.0 ether;
   uint256 public constant PRICE_PER_SEAL_TOKEN = 0.2 ether;
   uint256 public constant PRICE_PER_PLANKTON_TOKEN = 0.1 ether;
-  uint256 public whaleTokensLeft = 50;
-  uint256 public sealTokensLeft = 150;
-  uint256 public planktonTokensLeft = 2800;
+  uint256 public whaleTokensLeft;
+  uint256 public sealTokensLeft;
+  uint256 public planktonTokensLeft;
   uint16 startSeal;
   uint16 startPlankton;
   uint16[] remainingWhaleTokenIds;
@@ -43,6 +43,9 @@ contract MembershipNft is ERC721, WhiteListed {
     string memory _URI,
     uint16 _startSeal,
     uint16 _startPlankton,
+    uint16 _whaleTokensLeft,
+    uint16 _sealTokensLeft,
+    uint16 _planktonTokensLeft,
     uint16[] memory _remainingWhaleTokenIds,
     uint16[] memory _remainingSealTokenIds,
     uint16[] memory _remainingPlanktonTokenIds
@@ -50,6 +53,9 @@ contract MembershipNft is ERC721, WhiteListed {
     URI = _URI;
     startSeal = _startSeal;
     startPlankton = _startPlankton;
+    whaleTokensLeft = _whaleTokensLeft;
+    sealTokensLeft = _sealTokensLeft;
+    planktonTokensLeft = _planktonTokensLeft;
     remainingWhaleTokenIds = _remainingWhaleTokenIds;
     remainingSealTokenIds = _remainingSealTokenIds;
     remainingPlanktonTokenIds = _remainingPlanktonTokenIds;
