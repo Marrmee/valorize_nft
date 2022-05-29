@@ -3,73 +3,81 @@ import { BigNumber, Contract, Signer } from "ethers";
 import chai from "chai";
 import { solidity } from "ethereum-waffle";
 import { getAddress } from "@ethersproject/address";
-import { ExposedMembershipNft } from "../typechain/ExposedMembershipNft";
-import { ExposedMembershipNftFactory } from "../typechain/ExposedMembershipNftFactory";
+import { ProductNft } from "../typechain/ProductNft";
+import { ProductNftFactory } from "../typechain/ProductNftFactory";
 
 chai.use(solidity);
 
 const { expect } = chai;
 
-const INITIAL_URI = "https://token-cdn-domain/";
 const NAME = "ValorizeNFT";
 const SYMBOL = "VALOR";
-const START_SEAL = 50;
-const START_PLANKTON = 200;
-const WHALE_TOKENS_LEFT = 50;
-const SEAL_TOKENS_LEFT = 200;
-const PLANKTON_TOKENS_LEFT = 3000;
-const REMAINING_WHALE_TOKEN_IDS = [3, 18, 50, 0, 0];
-const REMAINING_SEAL_TOKEN_IDS = [53, 68, 125, 200, 0];
-const REMAINING_PLANKTON_TOKEN_IDS = [203, 223, 375, 1300, 3000];
+const INITIAL_URI = "https://token-cdn-domain/";
+const START_RARER = 10;
+const START_RARE = 1010;
+const RAREST_TOKENS_LEFT = 10;
+const RARER_TOKENS_LEFT = 1000;
+const RARE_TOKENS_LEFT = 1000;
+const REMAINING_RARER_TOKEN_IDS = [85, 260, 685];
 
-describe.only("ExposedMembershipNft", () => {
-  let membershipNft: ExposedMembershipNft,
+describe("ExposedMembershipNft", () => {
+  let productNft: ProductNft,
     deployer: Signer,
     admin1: Signer,
     admin2: Signer,
     vault: Signer,
     addresses: Signer[];
 
-  const setupMembershipNft = async () => {
+  const setupProductNft = async () => {
     [deployer, admin1, admin2, vault, ...addresses] = await ethers.getSigners();
-    membershipNft = await new ExposedMembershipNftFactory(deployer).deploy(NAME, SYMBOL,
-      INITIAL_URI, START_SEAL, START_PLANKTON, WHALE_TOKENS_LEFT, SEAL_TOKENS_LEFT, PLANKTON_TOKENS_LEFT, REMAINING_WHALE_TOKEN_IDS, REMAINING_SEAL_TOKEN_IDS, REMAINING_PLANKTON_TOKEN_IDS,
+    productNft = await new ProductNftFactory(deployer).deploy(NAME, SYMBOL,
+      INITIAL_URI, START_RARER, START_RARE, RAREST_TOKENS_LEFT, RARER_TOKENS_LEFT, RARE_TOKENS_LEFT, REMAINING_RARER_TOKEN_IDS,
     );
-    await membershipNft.deployed();
+    await productNft.deployed();
   };
 
   describe("Deployment", async () => {
-    beforeEach(setupMembershipNft)
+    beforeEach(setupProductNft)
 
     it("should deploy", async () => {
-      expect(membershipNft).to.be.ok;
+      expect(productNft).to.be.ok;
     });
   })
 
   describe("Minting random plankton, seal and whale NFTs", async () => {
-    beforeEach(setupMembershipNft)
+    beforeEach(setupProductNft)
 
-    it("mints a random whale NFT", async () => {
-      const overridesWhale = {value: ethers.utils.parseEther("1.0")}
-      const leftBeforeMint = await membershipNft.whaleTokensLeft();
-      await membershipNft.mintRandomWhaleNFT(overridesWhale);
-      const leftAfterMint = await membershipNft.whaleTokensLeft();
+    it("mints a rarest NFT", async () => {
+      const overridesRarest = {value: ethers.utils.parseEther("1.5")}
+      const leftBeforeMint = await productNft.rarestTokensLeft();
+      await productNft.mintRandomWhaleNFT(overridesWhale);
+      const leftAfterMint = await productNft.rarestTokensLeft();
       expect(leftBeforeMint).to.equal(leftAfterMint.add(1));
     });
 
-    it("mints a random seal NFT", async () => {
-      const overridesSeal = {value: ethers.utils.parseEther("0.2")}
-      const leftBeforeMint = await membershipNft.sealTokensLeft();
-      await membershipNft.mintRandomSealNFT(overridesSeal);
-      const leftAfterMint = await membershipNft.sealTokensLeft();
+    // it("mints a rarest NFT V2", async () => {
+    //   const overridesRarest = {value: ethers.utils.parseEther("1.5")}
+    //   const recipient = await addresses.getAddress[0];
+    //   const recipientBalance = recipient.BalancOf();
+    //   const leftBeforeMint = await productNft.rarestTokensLeft();
+    //   await productNft.mintRandomWhaleNFT(overridesWhale);
+    //   const leftAfterMint = await productNft.rarestTokensLeft();
+    //   expect(recipientBalance).to.equal(leftAfterMint.add(1));
+    // });
+
+    it("mints a random rarer NFT", async () => {
+      const overridesRarer = {value: ethers.utils.parseEther("0.55")}
+      const leftBeforeMint = await productNft.rareTokensLeft();
+      await membershipNft.mintRandomRarerNFT(overridesRarer);
+      const leftAfterMint = await membershipNft.raresTokensLeft();
       expect(leftBeforeMint).to.equal(leftAfterMint.add(1));
     });
 
-    it("mints a random plankton NFT", async () => {
-      const overridesPlankton = {value: ethers.utils.parseEther("0.1")}
-      const leftBeforeMint = await membershipNft.planktonTokensLeft();
-      await membershipNft.mintRandomPlanktonNFT(overridesPlankton);
-      const leftAfterMint = await membershipNft.planktonTokensLeft();
+    it("mints a rare NFT", async () => {
+      const overridesRarest = {value: ethers.utils.parseEther("1.5")}
+      const leftBeforeMint = await productNft.rarestTokensLeft();
+      await productNft.mintRandomWhaleNFT(overridesWhale);
+      const leftAfterMint = await productNft.rarestTokensLeft();
       expect(leftBeforeMint).to.equal(leftAfterMint.add(1));
     });
   });

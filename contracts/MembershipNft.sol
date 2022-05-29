@@ -77,7 +77,7 @@ contract MembershipNft is ERC721, WhiteListed {
     uint256 whaleTokenId = (block.difficulty + i / whaleTokensLeft) % whaleTokensLeft + 1; 
     whaleTokensLeft--;
     require(PRICE_PER_WHALE_TOKEN <= msg.value, "Ether value sent is not correct");
-//test to see if changing the number of the mint gives a different rarity call 
+//test to see if changing the tokenId gives a different rarity call 
     if (whaleTokenId <= remainingWhaleTokenIds[0] && RarityTraitsByKey["Whale"].Mycelia > 0) {
       _whaleMint(msg.sender, RarityTraitsByKey["Whale"].Mycelia, ''); 
       RarityTraitsByKey["Whale"].Mycelia--;

@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 //import "./RoyaltyDistributor.sol";
 import "./WhiteListed.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/token/common/ERC2981.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
@@ -12,7 +13,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 @dev Implementation of a Membership Non Fungible Token using ERC721.
 */
 
-contract ProductNft is ERC721, Ownable {
+contract ProductNft is ERC721, ERC2981, Ownable {
   string public URI;
   uint256 public constant PRICE_PER_RARE_TOKEN = 1.5 ether;
   uint256 public constant PRICE_PER_RARER_TOKEN = 0.55 ether;
@@ -23,6 +24,7 @@ contract ProductNft is ERC721, Ownable {
   uint16 startRarer;
   uint16 startRare;
   uint16[] remainingRarerTokenIds;
+  uint256 public rarerTokenId;
 
   mapping(string => RemainingRarerMints) public RarityTraitsByKey;
 
@@ -31,7 +33,6 @@ contract ProductNft is ERC721, Ownable {
     uint16 Diamond;
     uint16 Gold;
   }
-
 
     constructor(    
     string memory _name, 
@@ -54,6 +55,11 @@ contract ProductNft is ERC721, Ownable {
         RarityTraitsByKey["Rarer"] = RemainingRarerMints(remainingRarerTokenIds[0], remainingRarerTokenIds[1], remainingRarerTokenIds[2]);
     }
 
+    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC2981, ERC721) returns (bool) {
+        return interfaceId == type(IERC2981).interfaceId || super.supportsInterface(interfaceId);
+    }
+
+
     function _baseURI() internal view override returns (string memory) {
     return URI;
     }
@@ -68,9 +74,9 @@ contract ProductNft is ERC721, Ownable {
         rarestTokensLeft--;
     }
 //Do we want to mint the Obsidian NFTs first instead of random? 
-    function rarerMint() public payable {
+    function rarerRandomMint() public payable {
         uint256 i = uint256(uint160(address(msg.sender)));
-        uint256 rarerTokenId = startRarer + (block.difficulty + i / rarerTokensLeft) % rarerTokensLeft + 1; 
+        rarerTokenId = startRarer + (block.difficulty + i / rarerTokensLeft) % rarerTokensLeft + 1; 
         rarerTokensLeft--;
         require(PRICE_PER_RARER_TOKEN <= msg.value, "Ether value sent is not correct");
         if (rarerTokenId <= remainingRarerTokenIds[0] && RarityTraitsByKey["Rarer"].Obsidian > 0) {
@@ -85,10 +91,23 @@ contract ProductNft is ERC721, Ownable {
         }
     }
 
+    function rarerOrderMint() public payable {
+        rarerTokenId = rarerTokensLeft--;
+        require(PRICE_PER_RARER_TOKEN <= msg.value, "Ether value sent is not correct");
+        if (rarerTokenId <= remainingRarerTokenIds[0] && RarityTraitsByKey["Rarer"].Obsidian > 0) {
+            _safeMint(msg.sender, RarityTraitsByKey["Rarer"].Obsidian, ''); 
+            RarityTraitsByKey["Rarer"].Obsidian--;
+        } else if (rarerTokenId <= remainingRarerTokenIds[1] && RarityTraitsByKey["Rarer"].Diamond >= (remainingRarerTokenIds[0]+1)) {
+            _safeMint(msg.sender, RarityTraitsByKey["Rarer"].Diamond, ''); 
+            RarityTraitsByKey["Rarer"].Diamond--;
+        } else if (rarerTokenId <= remainingRarerTokenIds[2] && RarityTraitsByKey["Rarer"].Gold >= (remainingRarerTokenIds[1]+1)) {
+            _safeMint(msg.sender, RarityTraitsByKey["Rarer"].Gold, ''); 
+            RarityTraitsByKey["Rarer"].Gold--;
+        }
+    }
     function rareMint() public payable {
         require(PRICE_PER_RARE_TOKEN <= msg.value, "Ether value sent is not correct");
         _safeMint(msg.sender, rareTokensLeft, " ");
         rareTokensLeft--;
     }
-
 }
