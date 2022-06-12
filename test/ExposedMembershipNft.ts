@@ -13,16 +13,12 @@ const { expect } = chai;
 const INITIAL_URI = "https://token-cdn-domain/";
 const NAME = "ValorizeNFT";
 const SYMBOL = "VALOR";
-const START_SEAL = 50;
-const START_PLANKTON = 200;
-const WHALE_TOKENS_LEFT = 50;
-const SEAL_TOKENS_LEFT = 200;
-const PLANKTON_TOKENS_LEFT = 3000;
-const REMAINING_WHALE_TOKEN_IDS = [3, 18, 50, 0, 0];
+const REMAINING_WHALE_TOKEN_IDS_1 = [3, 18, 50, 0, 0];
+const REMAINING_WHALE_TOKEN_IDS_2 = [10, 10, 10, 0, 0];
 const REMAINING_SEAL_TOKEN_IDS = [53, 68, 125, 200, 0];
 const REMAINING_PLANKTON_TOKEN_IDS = [203, 223, 375, 1300, 3000];
 
-describe.only("ExposedMembershipNft", () => {
+describe("ExposedMembershipNft", () => {
   let membershipNft: ExposedMembershipNft,
     deployer: Signer,
     admin1: Signer,
@@ -33,10 +29,11 @@ describe.only("ExposedMembershipNft", () => {
   const setupMembershipNft = async () => {
     [deployer, admin1, admin2, vault, ...addresses] = await ethers.getSigners();
     membershipNft = await new ExposedMembershipNftFactory(deployer).deploy(NAME, SYMBOL,
-      INITIAL_URI, START_SEAL, START_PLANKTON, WHALE_TOKENS_LEFT, SEAL_TOKENS_LEFT, PLANKTON_TOKENS_LEFT, REMAINING_WHALE_TOKEN_IDS, REMAINING_SEAL_TOKEN_IDS, REMAINING_PLANKTON_TOKEN_IDS,
+      INITIAL_URI, REMAINING_WHALE_TOKEN_IDS_1, REMAINING_SEAL_TOKEN_IDS, REMAINING_PLANKTON_TOKEN_IDS,
     );
     await membershipNft.deployed();
   };
+
 
   describe("Deployment", async () => {
     beforeEach(setupMembershipNft)
@@ -51,26 +48,35 @@ describe.only("ExposedMembershipNft", () => {
 
     it("mints a random whale NFT", async () => {
       const overridesWhale = {value: ethers.utils.parseEther("1.0")}
-      const leftBeforeMint = await membershipNft.whaleTokensLeft();
+      const leftBeforeMint = REMAINING_WHALE_TOKEN_IDS_1[2];
       await membershipNft.mintRandomWhaleNFT(overridesWhale);
-      const leftAfterMint = await membershipNft.whaleTokensLeft();
-      expect(leftBeforeMint).to.equal(leftAfterMint.add(1));
+      const leftAfterMint = await membershipNft.remainingWhaleTokenIds([2]);
+      expect(leftBeforeMint).to.equal(leftAfterMint+1);
     });
 
     it("mints a random seal NFT", async () => {
       const overridesSeal = {value: ethers.utils.parseEther("0.2")}
-      const leftBeforeMint = await membershipNft.sealTokensLeft();
+      const leftBeforeMint = REMAINING_SEAL_TOKEN_IDS[3];
       await membershipNft.mintRandomSealNFT(overridesSeal);
-      const leftAfterMint = await membershipNft.sealTokensLeft();
-      expect(leftBeforeMint).to.equal(leftAfterMint.add(1));
+      const leftAfterMint = REMAINING_SEAL_TOKEN_IDS[3];
+      expect(leftBeforeMint).to.equal(leftAfterMint+1);
     });
 
     it("mints a random plankton NFT", async () => {
       const overridesPlankton = {value: ethers.utils.parseEther("0.1")}
-      const leftBeforeMint = await membershipNft.planktonTokensLeft();
+      const leftBeforeMint = REMAINING_PLANKTON_TOKEN_IDS[4];
       await membershipNft.mintRandomPlanktonNFT(overridesPlankton);
-      const leftAfterMint = await membershipNft.planktonTokensLeft();
-      expect(leftBeforeMint).to.equal(leftAfterMint.add(1));
+      const leftAfterMint = REMAINING_PLANKTON_TOKEN_IDS[4];
+      expect(leftBeforeMint).to.equal(leftAfterMint+1);
+    });
+
+    it("mints a random whale NFT V2", async () => {
+      const overridesWhale = {value: ethers.utils.parseEther("1.0")}
+      await membershipNft.mintRandomWhaleNFT(overridesWhale);
+      await membershipNft.mintRandomWhaleNFT(overridesWhale);
+      const onlyMyceliaTokens = REMAINING_WHALE_TOKEN_IDS_1[0];
+      const whaleDiamondId = await (await membershipNft.RarityTraitsByKey("Whale")).Diamond;
+      expect(whaleDiamondId).to.equal(48);
     });
   });
 
@@ -108,7 +114,6 @@ describe.only("ExposedMembershipNft", () => {
       const planktonSilverId = await (await membershipNft.RarityTraitsByKey("Plankton")).Silver;
       const recipientAddress = await addresses[0].getAddress();
       const data = '0x12345678';
-      
       await expect(membershipNft.whaleMint(recipientAddress, planktonSilverId, data)
       ).to.be.revertedWith(
         "the whale NFTs are sold out");
@@ -118,7 +123,6 @@ describe.only("ExposedMembershipNft", () => {
       const planktonSilverId = await (await membershipNft.RarityTraitsByKey("Plankton")).Silver;
       const recipientAddress = await addresses[0].getAddress();
       const data = '0x12345678';
-      
       await expect(membershipNft.sealMint(recipientAddress, planktonSilverId, data))
       .to.be.revertedWith(
         "the seal NFTs are sold out");
@@ -197,16 +201,65 @@ describe.only("ExposedMembershipNft", () => {
     });
   });
 
-  // describe("Set Token Royalties for Artists with Unique and Generative Art", async () => {
-  //   beforeEach(setupMembershipNft)
+  describe("Send Token Royalties to Artists that created Mycelia tier art or send royalties of generative art to royalty distributor address", async () => {
+    beforeEach(setupMembershipNft)
 
-  //   it("sets and returns the unique art token royalty amount", async () => {
-  //     const uniqueArtists = [await addresses[0].getAddress(), await addresses[4].getAddress(), await addresses[8].getAddress()];
-  //     const myceliaTokenIds = [1, 5, 9];
-  //     await membershipNft._setUniqueTokenRoyalty(myceliaTokenIds, uniqueArtists);
-  //     //await membershipNft.uniqueTokenRoyaltyInfo(5, ethers.utils.parseEther("1.0"));
-  //     const artistAddress = await (await membershipNft._uniqueTokenRoyaltyInfo(5)).receiver;
-  //     expect(artistAddress).to.equal(addresses[4].getAddress());
-  //   });
-  // });
+    it("sets the artists that created mycelia art", async () => {
+      const uniqueArtists = [await addresses[0].getAddress(), await addresses[4].getAddress(), await addresses[8].getAddress()];
+      const myceliaTokenIds = [1, 5, 9];
+      await membershipNft.settingMyceliaArtists(uniqueArtists, myceliaTokenIds);
+      const artistAddress = await membershipNft.myceliaArtists(5);
+      expect(artistAddress).to.equal(uniqueArtists[1]);
+    });
+
+    it("sends the correct amount to the mycelia artist", async () => {
+      const uniqueArtists = [await addresses[0].getAddress(), await addresses[1].getAddress(), await addresses[2].getAddress()];
+      const myceliaTokenIds = [1, 2, 3];
+      await membershipNft.settingMyceliaArtists(uniqueArtists, myceliaTokenIds);
+      await membershipNft.royaltyInfo(2, 10);
+      const artistAddressBalance = await membershipNft.balanceOf(await addresses[1].getAddress());
+      expect(artistAddressBalance).to.equal(1);
+    });
+  });
+
+  describe("Deployment with different remaining whale token Ids", async () => {
+    beforeEach(async () => {
+      [deployer, admin1, admin2, vault, ...addresses] = await ethers.getSigners();
+      membershipNft = await new ExposedMembershipNftFactory(deployer).deploy(NAME, SYMBOL,
+        INITIAL_URI, REMAINING_WHALE_TOKEN_IDS_2, REMAINING_SEAL_TOKEN_IDS, REMAINING_PLANKTON_TOKEN_IDS,
+      );
+      await membershipNft.deployed();
+    });
+
+    //if REMAINING_WHALE_TOKEN_IDS_2[0] = 30, then error whale Nfts sold out
+    it("should only mint mycelia NFTs when whaleMint is called", async () => {
+      const overridesWhale = {value: ethers.utils.parseEther("1.0")}
+      await membershipNft.mintRandomWhaleNFT(overridesWhale);
+      const onlyMyceliaTokens = REMAINING_WHALE_TOKEN_IDS_2[0];
+      const whaleMyceliaId = await (await membershipNft.RarityTraitsByKey("Whale")).Mycelia;
+      expect(whaleMyceliaId).to.equal(9);
+    });
+
+    it("should only mint mycelia NFTs when whaleMint is called", async () => {
+      const overridesWhale = {value: ethers.utils.parseEther("1.0")}
+      await membershipNft.mintRandomWhaleNFT(overridesWhale);
+      const onlyMyceliaTokens = REMAINING_WHALE_TOKEN_IDS_2[0];
+      const whaleMyceliaId = await (await membershipNft.RarityTraitsByKey("Whale")).Mycelia;
+      expect(whaleMyceliaId).to.equal(9);
+    });
+
+    // it("should not mint Obsidian NFTs when whaleMint is called", async () => {
+    //   const overridesWhale = {value: ethers.utils.parseEther("1.0")}
+    //   await membershipNft.mintRandomWhaleNFT(overridesWhale);
+    //   const whaleObsidiandId = await (await membershipNft.RarityTraitsByKey("Whale")).Obsidian;
+    //   expect(whaleObsidiandId).to.equal(0);
+    // });
+
+    // it("should not mint Diamond NFTs when whaleMint is called", async () => {
+    //   const overridesWhale = {value: ethers.utils.parseEther("1.0")}
+    //   await membershipNft.mintRandomWhaleNFT(overridesWhale);
+    //   const whaleDiamondId = await (await membershipNft.RarityTraitsByKey("Whale")).Diamond;
+    //   expect(whaleDiamondId).to.equal(0);
+    // });
+  });
 })

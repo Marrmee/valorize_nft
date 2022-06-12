@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "./RoyaltyDistributor.sol";
 import "./WhiteListed.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import { IERC2981, IERC165 } from "@openzeppelin/contracts/interfaces/IERC2981.sol";
+//import "@openzeppelin/contracts/interfaces/IERC2981.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
