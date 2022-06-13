@@ -13,6 +13,9 @@ const { expect } = chai;
 const INITIAL_URI = "https://token-cdn-domain/";
 const NAME = "ValorizeNFT";
 const SYMBOL = "VALOR";
+const WHALE_TOKENS_LEFT = 50;
+const SEAL_TOKENS_LEFT = 150;
+const PLANKTON_TOKENS_LEFT = 2800;
 const REMAINING_WHALE_TOKEN_IDS_1 = [3, 18, 50, 0, 0];
 const REMAINING_WHALE_TOKEN_IDS_2 = [10, 10, 10, 0, 0];
 const REMAINING_SEAL_TOKEN_IDS = [53, 68, 125, 200, 0];
@@ -29,7 +32,7 @@ describe("ExposedMembershipNft", () => {
   const setupMembershipNft = async () => {
     [deployer, admin1, admin2, vault, ...addresses] = await ethers.getSigners();
     membershipNft = await new ExposedMembershipNftFactory(deployer).deploy(NAME, SYMBOL,
-      INITIAL_URI, REMAINING_WHALE_TOKEN_IDS_1, REMAINING_SEAL_TOKEN_IDS, REMAINING_PLANKTON_TOKEN_IDS,
+      INITIAL_URI, WHALE_TOKENS_LEFT, SEAL_TOKENS_LEFT, PLANKTON_TOKENS_LEFT, REMAINING_WHALE_TOKEN_IDS_1, REMAINING_SEAL_TOKEN_IDS, REMAINING_PLANKTON_TOKEN_IDS,
     );
     await membershipNft.deployed();
   };
@@ -48,26 +51,26 @@ describe("ExposedMembershipNft", () => {
 
     it("mints a random whale NFT", async () => {
       const overridesWhale = {value: ethers.utils.parseEther("1.0")}
-      const leftBeforeMint = REMAINING_WHALE_TOKEN_IDS_1[2];
+      const leftBeforeMint = await membershipNft.whaleTokensLeft();
       await membershipNft.mintRandomWhaleNFT(overridesWhale);
-      const leftAfterMint = await membershipNft.remainingWhaleTokenIds([2]);
-      expect(leftBeforeMint).to.equal(leftAfterMint+1);
+      const leftAfterMint = await membershipNft.whaleTokensLeft();
+      expect(leftBeforeMint).to.equal(leftAfterMint.add(1));
     });
 
     it("mints a random seal NFT", async () => {
       const overridesSeal = {value: ethers.utils.parseEther("0.2")}
-      const leftBeforeMint = REMAINING_SEAL_TOKEN_IDS[3];
+      const leftBeforeMint = await membershipNft.whaleTokensLeft();;
       await membershipNft.mintRandomSealNFT(overridesSeal);
-      const leftAfterMint = REMAINING_SEAL_TOKEN_IDS[3];
-      expect(leftBeforeMint).to.equal(leftAfterMint+1);
+      const leftAfterMint = await membershipNft.whaleTokensLeft();;
+      expect(leftBeforeMint).to.equal(leftAfterMint.add(1));
     });
 
     it("mints a random plankton NFT", async () => {
       const overridesPlankton = {value: ethers.utils.parseEther("0.1")}
-      const leftBeforeMint = REMAINING_PLANKTON_TOKEN_IDS[4];
+      const leftBeforeMint = await membershipNft.whaleTokensLeft();
       await membershipNft.mintRandomPlanktonNFT(overridesPlankton);
-      const leftAfterMint = REMAINING_PLANKTON_TOKEN_IDS[4];
-      expect(leftBeforeMint).to.equal(leftAfterMint+1);
+      const leftAfterMint = await membershipNft.whaleTokensLeft();
+      expect(leftBeforeMint).to.equal(leftAfterMint.add(1));
     });
 
     it("mints a random whale NFT V2", async () => {
@@ -222,31 +225,31 @@ describe("ExposedMembershipNft", () => {
     });
   });
 
-  describe("Deployment with different remaining whale token Ids", async () => {
-    beforeEach(async () => {
-      [deployer, admin1, admin2, vault, ...addresses] = await ethers.getSigners();
-      membershipNft = await new ExposedMembershipNftFactory(deployer).deploy(NAME, SYMBOL,
-        INITIAL_URI, REMAINING_WHALE_TOKEN_IDS_2, REMAINING_SEAL_TOKEN_IDS, REMAINING_PLANKTON_TOKEN_IDS,
-      );
-      await membershipNft.deployed();
-    });
+  // describe("Deployment with different remaining whale token Ids", async () => {
+  //   beforeEach(async () => {
+  //     [deployer, admin1, admin2, vault, ...addresses] = await ethers.getSigners();
+  //     membershipNft = await new ExposedMembershipNftFactory(deployer).deploy(NAME, SYMBOL,
+  //       INITIAL_URI, REMAINING_WHALE_TOKEN_IDS_2, REMAINING_SEAL_TOKEN_IDS, REMAINING_PLANKTON_TOKEN_IDS,
+  //     );
+  //     await membershipNft.deployed();
+  //   });
 
-    //if REMAINING_WHALE_TOKEN_IDS_2[0] = 30, then error whale Nfts sold out
-    it("should only mint mycelia NFTs when whaleMint is called", async () => {
-      const overridesWhale = {value: ethers.utils.parseEther("1.0")}
-      await membershipNft.mintRandomWhaleNFT(overridesWhale);
-      const onlyMyceliaTokens = REMAINING_WHALE_TOKEN_IDS_2[0];
-      const whaleMyceliaId = await (await membershipNft.RarityTraitsByKey("Whale")).Mycelia;
-      expect(whaleMyceliaId).to.equal(9);
-    });
+  //   //if REMAINING_WHALE_TOKEN_IDS_2[0] = 30, then error whale Nfts sold out
+  //   it("should only mint mycelia NFTs when whaleMint is called", async () => {
+  //     const overridesWhale = {value: ethers.utils.parseEther("1.0")}
+  //     await membershipNft.mintRandomWhaleNFT(overridesWhale);
+  //     const onlyMyceliaTokens = REMAINING_WHALE_TOKEN_IDS_2[0];
+  //     const whaleMyceliaId = await (await membershipNft.RarityTraitsByKey("Whale")).Mycelia;
+  //     expect(whaleMyceliaId).to.equal(9);
+  //   });
 
-    it("should only mint mycelia NFTs when whaleMint is called", async () => {
-      const overridesWhale = {value: ethers.utils.parseEther("1.0")}
-      await membershipNft.mintRandomWhaleNFT(overridesWhale);
-      const onlyMyceliaTokens = REMAINING_WHALE_TOKEN_IDS_2[0];
-      const whaleMyceliaId = await (await membershipNft.RarityTraitsByKey("Whale")).Mycelia;
-      expect(whaleMyceliaId).to.equal(9);
-    });
+  //   it("should only mint mycelia NFTs when whaleMint is called", async () => {
+  //     const overridesWhale = {value: ethers.utils.parseEther("1.0")}
+  //     await membershipNft.mintRandomWhaleNFT(overridesWhale);
+  //     const onlyMyceliaTokens = REMAINING_WHALE_TOKEN_IDS_2[0];
+  //     const whaleMyceliaId = await (await membershipNft.RarityTraitsByKey("Whale")).Mycelia;
+  //     expect(whaleMyceliaId).to.equal(9);
+  //   });
 
     // it("should not mint Obsidian NFTs when whaleMint is called", async () => {
     //   const overridesWhale = {value: ethers.utils.parseEther("1.0")}
@@ -261,5 +264,5 @@ describe("ExposedMembershipNft", () => {
     //   const whaleDiamondId = await (await membershipNft.RarityTraitsByKey("Whale")).Diamond;
     //   expect(whaleDiamondId).to.equal(0);
     // });
-  });
-})
+  // });
+});

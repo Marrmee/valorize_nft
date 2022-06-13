@@ -9,11 +9,15 @@ import { IERC2981, IERC165 } from "@openzeppelin/contracts/interfaces/IERC2981.s
 /**
 @title MembershipNft
 @author Marco Huberts & Javier Gonzalez
-@dev Implementation of a Membership Non Fungible Token using ERC721.
-// Avoid having to do math on parameters that will be sent by humans (constructor)
-// Try to minimize the state modifications that you do (It's fine, but if you can avoid it it's better, if you can't avoid it, writing to state once is better than writing to state 5 times)
-// Try to make functions that are similar into reusable bits (don't overoptimize for this)
-// Remember to name things correctly [https://martinfowler.com/bliki/TwoHardThings.html]
+@dev    Implementation of a Valorize Product Non Fungible Token using ERC721.
+*       Key information: have the metadata ordered from token Id 1 to 2010 
+*       whereby token Id 1 to 10 are Mycelia, token Id 10 to 110 Obsidian, 
+*       token Id 110 to 360 Diamond, token Id 360 to 1010 Gold & token Id 1010 to 2010 Silver
+*       Rarer mint function token Id will start from 10 & Rare mint function token Id will start from 1010.
+* Avoid having to do math on parameters that will be sent by humans (constructor)
+* Try to minimize the state modifications that you do (It's fine, but if you can avoid it it's better, if you can't avoid it, writing to state once is better than writing to state 5 times)
+* Try to make functions that are similar into reusable bits (don't overoptimize for this)
+* Remember to name things correctly [https://martinfowler.com/bliki/TwoHardThings.html]
 */
 
 contract ProductNft is ERC721, IERC2981, Ownable {
@@ -22,7 +26,6 @@ contract ProductNft is ERC721, IERC2981, Ownable {
   uint256 public constant PRICE_PER_RARER_TOKEN = 0.55 ether;
   uint256 public constant PRICE_PER_RARE_TOKEN = 0.2 ether;
   uint256 public rarestTokensLeft;
-  uint256 public rarerTokensLeft;
   uint256 public rareTokensLeft;
   uint16 public startRarerTokenId;
   uint16 public startRareTokenId;
@@ -48,7 +51,7 @@ contract ProductNft is ERC721, IERC2981, Ownable {
     uint16 _startRarerTokenId,
     uint16 _startRareTokenId,
     uint16 _rarestTokensLeft,
-    uint16 _rarerTokensLeft,
+
     uint16 _rareTokensLeft,
     uint16[] memory _remainingRarerTokenIds
     ) ERC721(_name, _symbol) {
@@ -56,7 +59,6 @@ contract ProductNft is ERC721, IERC2981, Ownable {
         startRarerTokenId = _startRarerTokenId;
         startRareTokenId = _startRareTokenId;
         rarestTokensLeft = _rarestTokensLeft;
-        rarerTokensLeft = _rarerTokensLeft;
         rareTokensLeft = _rareTokensLeft;
         remainingRarerTokenIds = _remainingRarerTokenIds; 
         RarityTraitsByKey["Rarer"] = RemainingRarerMints(remainingRarerTokenIds[0], remainingRarerTokenIds[1], remainingRarerTokenIds[2]);
@@ -161,7 +163,7 @@ contract ProductNft is ERC721, IERC2981, Ownable {
     /**
     * @dev  Information about the royalty is returned when provided with token Id and sale price 
     * @param _tokenId is the tokenId of an NFT that has been sold on the NFT marketplace
-    * @param _salePrice is the price of the sale of the given tokenId
+    * @param _salePrice is the price of the sale of the given token Id
     */
     function royaltyInfo(
         uint256 _tokenId,

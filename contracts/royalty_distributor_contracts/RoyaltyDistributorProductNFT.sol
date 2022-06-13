@@ -19,7 +19,7 @@ contract RoyaltyDistributor {
   struct GenerativeRoyaltyInfo {
     address payable artistAddress;
     address payable valorizeAddress;
-    uint96 royaltyPercentage;
+    uint96 royaltyAmount;
   }
 
   mapping(uint256 => GenerativeRoyaltyInfo) public generativeTokenRoyalty;

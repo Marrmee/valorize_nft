@@ -16,10 +16,13 @@ contract ExposedMembershipNft is MembershipNft {
         string memory _name_, 
         string memory _symbol_, 
         string memory _URI_,
+        uint16 _whaleTokensLeft_,
+        uint16 _sealTokensLeft_,
+        uint16 _planktonTokensLeft_,
         uint16[] memory _remainingWhaleTokenIds,
         uint16[] memory _remainingSealTokenIds,
         uint16[] memory _remainingPlanktonTokenIds
-    ) MembershipNft(_name_, _symbol_, _URI_, _remainingWhaleTokenIds, _remainingSealTokenIds, _remainingPlanktonTokenIds) {
+    ) MembershipNft(_name_, _symbol_, _URI_, _whaleTokensLeft_, _sealTokensLeft_, _planktonTokensLeft_, _remainingWhaleTokenIds, _remainingSealTokenIds, _remainingPlanktonTokenIds) {
         URI = _URI_;
     }
 

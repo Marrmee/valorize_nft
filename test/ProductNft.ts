@@ -16,12 +16,11 @@ const INITIAL_URI = "https://token-cdn-domain/";
 const START_RARER = 10;
 const START_RARE = 1010;
 const RAREST_TOKENS_LEFT = 10;
-const RARER_TOKENS_LEFT = 1000;
 const RARE_TOKENS_LEFT = 1000;
 const REMAINING_RARER_TOKEN_IDS = [110, 360, 1010];//amounts are 100, 250, 650
 
 
-describe.only("ProductNft", () => {
+describe("ProductNft", () => {
   let productNft: ProductNft,
     deployer: Signer,
     admin1: Signer,
@@ -32,7 +31,7 @@ describe.only("ProductNft", () => {
   const setupProductNft = async () => {
     [deployer, admin1, admin2, vault, ...addresses] = await ethers.getSigners();
     productNft = await new ProductNftFactory(deployer).deploy(NAME, SYMBOL,
-      INITIAL_URI, START_RARER, START_RARE, RAREST_TOKENS_LEFT, RARER_TOKENS_LEFT, RARE_TOKENS_LEFT, REMAINING_RARER_TOKEN_IDS,
+      INITIAL_URI, START_RARER, START_RARE, RAREST_TOKENS_LEFT, RARE_TOKENS_LEFT, REMAINING_RARER_TOKEN_IDS,
     );
     await productNft.deployed();
   };
@@ -95,12 +94,12 @@ describe.only("ProductNft", () => {
     });
   });
 
-  describe("get royalty info by tokenId and sale price", async () => {
-    beforeEach(setupProductNft)
+  // describe("get royalty info by tokenId and sale price", async () => {
+  //   beforeEach(setupProductNft)
 
-    it("returns the royalty info to the artist", async() => {
-      const getRarity = await productNft.getRarityByTokenId(5);
-      expect(getRarity).to.emit(productNft, "returnRarityByTokenId").withArgs(5, "Mycelia");
-    });
-  });
+  //   it("returns the royalty info to the artist", async() => {
+  //     const getRarity = await productNft.getRarityByTokenId(5);
+  //     expect(getRarity).to.emit(productNft, "returnRarityByTokenId").withArgs(5, "Mycelia");
+  //   });
+  // });
 });
