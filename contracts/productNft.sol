@@ -12,8 +12,9 @@ import { IERC2981, IERC165 } from "@openzeppelin/contracts/interfaces/IERC2981.s
 @dev    Implementation of a Valorize Product Non Fungible Token using ERC721.
 *       Key information: have the metadata ordered from token Id 1 to 2010 
 *       whereby token Id 1 to 10 are Mycelia, token Id 10 to 110 Obsidian, 
-*       token Id 110 to 360 Diamond, token Id 360 to 1010 Gold & token Id 1010 to 2010 Silver
+*       token Id 110 to 360 Diamond, token Id 360 to 1010 Gold & token Id 1010 to 2010 Silver.
 *       Rarer mint function token Id will start from 10 & Rare mint function token Id will start from 1010.
+*       Numbers can change but the token Ids should be in the order mentioned above.
 * Avoid having to do math on parameters that will be sent by humans (constructor)
 * Try to minimize the state modifications that you do (It's fine, but if you can avoid it it's better, if you can't avoid it, writing to state once is better than writing to state 5 times)
 * Try to make functions that are similar into reusable bits (don't overoptimize for this)
@@ -51,7 +52,6 @@ contract ProductNft is ERC721, IERC2981, Ownable {
     uint16 _startRarerTokenId,
     uint16 _startRareTokenId,
     uint16 _rarestTokensLeft,
-
     uint16 _rareTokensLeft,
     uint16[] memory _remainingRarerTokenIds
     ) ERC721(_name, _symbol) {
@@ -102,6 +102,7 @@ contract ProductNft is ERC721, IERC2981, Ownable {
         uint256 rarerTokenId = startRarerTokenId + 1;
         require(rarerTokenId < startRareTokenId, "Rarer Product NFTs are sold out");
         require(PRICE_PER_RARER_TOKEN <= msg.value, "Ether value sent is not correct");
+        
         bool obsidianNFTsAreFirst = (rarerTokenId <= remainingRarerTokenIds[0] && RarityTraitsByKey["Rarer"].Obsidian > (startRarerTokenId));
         bool diamondNFTsAreAfter = (rarerTokenId <= remainingRarerTokenIds[1] && RarityTraitsByKey["Rarer"].Diamond > (remainingRarerTokenIds[0]));
         bool goldNFTsAreLast = (rarerTokenId <= remainingRarerTokenIds[2] && RarityTraitsByKey["Rarer"].Obsidian > remainingRarerTokenIds[1]);

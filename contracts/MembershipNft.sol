@@ -2,9 +2,8 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 import { IERC2981, IERC165 } from "@openzeppelin/contracts/interfaces/IERC2981.sol";
-import "./WhiteListed.sol";
+//import "./WhiteListed.sol";
 
 
 /**
@@ -13,7 +12,7 @@ import "./WhiteListed.sol";
 @dev Implementation of a Membership Non Fungible Token using ERC721.
 */
 
-contract MembershipNft is ERC721, Ownable, IERC2981, WhiteListed {
+contract MembershipNft is ERC721, IERC2981 {
 
   string public URI;
   address royaltyDistributorAddress;
@@ -24,14 +23,14 @@ contract MembershipNft is ERC721, Ownable, IERC2981, WhiteListed {
   uint256 public whaleTokensLeft;
   uint256 public sealTokensLeft;
   uint256 public planktonTokensLeft;
-  uint16[] remainingWhaleTokenIds;
-  uint16[] remainingSealTokenIds;
-  uint16[] remainingPlanktonTokenIds;
+  uint16[] whaleTokenRarityIndices;
+  uint16[] sealTokenRarityIndices;
+  uint16[] planktonTokenRarityIndices;
 
   mapping(uint256 => address) public myceliaArtists; 
   mapping(string => RemainingMints) public RarityTraitsByKey;
 
-  struct RemainingMints {
+  struct RemainingMints { //[3, 18, 50, 0, 0]
     uint16 Mycelia;
     uint16 Obsidian;
     uint16 Diamond;
@@ -48,124 +47,148 @@ contract MembershipNft is ERC721, Ownable, IERC2981, WhiteListed {
     uint16 _whaleTokensLeft,
     uint16 _sealTokensLeft,
     uint16 _planktonTokensLeft,
-    uint16[] memory _remainingWhaleTokenIds,
-    uint16[] memory _remainingSealTokenIds,
-    uint16[] memory _remainingPlanktonTokenIds
+    uint16[] memory _whaleTokenRarityIndices,
+    uint16[] memory _sealTokenRarityIndices,
+    uint16[] memory _planktonTokenRarityIndices
   ) ERC721(_name, _symbol) {
     URI = _URI;
     whaleTokensLeft = _whaleTokensLeft;
     sealTokensLeft = _sealTokensLeft;
     planktonTokensLeft = _planktonTokensLeft;
-    remainingWhaleTokenIds = _remainingWhaleTokenIds;
-    remainingSealTokenIds = _remainingSealTokenIds;
-    remainingPlanktonTokenIds = _remainingPlanktonTokenIds;
-    RarityTraitsByKey["Whale"] = RemainingMints(remainingWhaleTokenIds[0], remainingWhaleTokenIds[1], remainingWhaleTokenIds[2], remainingWhaleTokenIds[3], remainingWhaleTokenIds[4]);
-    RarityTraitsByKey["Seal"] = RemainingMints(remainingSealTokenIds[0], remainingSealTokenIds[1], remainingSealTokenIds[2], remainingSealTokenIds[3], remainingSealTokenIds[4]);
-    RarityTraitsByKey["Plankton"] = RemainingMints(remainingPlanktonTokenIds[0], remainingPlanktonTokenIds[1], remainingPlanktonTokenIds[2], remainingPlanktonTokenIds[3], remainingPlanktonTokenIds[4]);
+    whaleTokenRarityIndices = _whaleTokenRarityIndices;
+    sealTokenRarityIndices = _sealTokenRarityIndices;
+    planktonTokenRarityIndices = _planktonTokenRarityIndices;
+    RarityTraitsByKey["Whale"] = RemainingMints(whaleTokenRarityIndices[0], whaleTokenRarityIndices[1], whaleTokenRarityIndices[2], whaleTokenRarityIndices[3], whaleTokenRarityIndices[4]);
+    RarityTraitsByKey["Seal"] = RemainingMints(sealTokenRarityIndices[0], sealTokenRarityIndices[1], sealTokenRarityIndices[2], sealTokenRarityIndices[3], sealTokenRarityIndices[4]);
+    RarityTraitsByKey["Plankton"] = RemainingMints(planktonTokenRarityIndices[0], planktonTokenRarityIndices[1], planktonTokenRarityIndices[2], planktonTokenRarityIndices[3], planktonTokenRarityIndices[4]);
   }
 
   function _baseURI() internal view override returns (string memory) {
     return URI;
   }
 
-  function _safeMint(address to, uint256 tokenId) override internal virtual {
-        _safeMint(to, tokenId, "");
+  function _selectiveMint(address recipient, uint256 tokenId) internal {
+    if (tokenId >= 1 && tokenId <= whaleTokenRarityIndices[2]){
+    _safeMint(recipient, tokenId, '');
+    } else if (tokenId > (whaleTokenRarityIndices[2]) && tokenId <= sealTokenRarityIndices[3]) {
+     _safeMint(recipient, tokenId, '');   
+    } else if (tokenId > (sealTokenRarityIndices[3]) && tokenId <= planktonTokenRarityIndices[4]) {
+     _safeMint(recipient, tokenId, '');      
+    }
   }
 
   function mintRandomWhaleNFT() public payable {
+    require(whaleTokensLeft > 0 && whaleTokensLeft <= whaleTokenRarityIndices[2], "the whale NFTs are sold out");
+    require(PRICE_PER_WHALE_TOKEN <= msg.value, "Ether value sent is not correct");
+
     uint256 i = uint256(uint160(address(msg.sender)));
     uint256 whaleTokenId = (block.difficulty + i / whaleTokensLeft) % whaleTokensLeft + 1;
 
-    bool whaleMyceliaNFTIsPicked = (whaleTokenId <= remainingWhaleTokenIds[0] && RarityTraitsByKey["Whale"].Mycelia > 0);
-    bool whaleObsidianNFTIsPicked = (whaleTokenId <= remainingWhaleTokenIds[1] && RarityTraitsByKey["Whale"].Obsidian > RarityTraitsByKey["Whale"].Mycelia);
-    bool whaleDiamondNFTIsPicked = (whaleTokenId <= remainingWhaleTokenIds[2] && RarityTraitsByKey["Whale"].Diamond > RarityTraitsByKey["Whale"].Obsidian);
+    bool whaleMyceliaNFTIsPicked = (whaleTokenId <= whaleTokenRarityIndices[0] && RarityTraitsByKey["Whale"].Mycelia > 0);
+    bool whaleObsidianNFTIsPicked = (whaleTokenId <= whaleTokenRarityIndices[1] && RarityTraitsByKey["Whale"].Obsidian > RarityTraitsByKey["Whale"].Mycelia);
+    bool whaleDiamondNFTIsPicked = (whaleTokenId <= whaleTokenRarityIndices[2] && RarityTraitsByKey["Whale"].Diamond > RarityTraitsByKey["Whale"].Obsidian);
 
-    require(PRICE_PER_WHALE_TOKEN <= msg.value, "Ether value sent is not correct");
     if (whaleMyceliaNFTIsPicked) {
-      _whaleMint(msg.sender, RarityTraitsByKey["Whale"].Mycelia, ''); 
-      RarityTraitsByKey["Whale"].Mycelia--;
+        mintMycelia("Whale");
+
     } else if (whaleObsidianNFTIsPicked) {
-      _whaleMint(msg.sender, RarityTraitsByKey["Whale"].Obsidian, ''); 
-      RarityTraitsByKey["Whale"].Obsidian--;
+        mintObsidian("Whale");
+
     } else if (whaleDiamondNFTIsPicked) {
-      _whaleMint(msg.sender, RarityTraitsByKey["Whale"].Diamond, ''); 
-      RarityTraitsByKey["Whale"].Diamond--;
+        mintDiamond("Whale");
+
     }
     whaleTokensLeft--;
   }
 
   function mintRandomSealNFT() public payable {
-    uint256 i = uint256(uint160(address(msg.sender)));
-    uint256 sealTokenId = remainingWhaleTokenIds[2] + ((block.difficulty + i / sealTokensLeft) % sealTokensLeft + 1);
-
-    bool sealMyceliaNFTIsPicked = sealTokenId <= remainingSealTokenIds[0] && RarityTraitsByKey["Seal"].Mycelia >= (remainingWhaleTokenIds[2] + 1); 
-    bool sealObsidianNFTIsPicked = sealTokenId <= remainingSealTokenIds[1] && RarityTraitsByKey["Seal"].Obsidian >= (remainingSealTokenIds[0] + 1);
-    bool sealDiamondNFTIsPicked = sealTokenId <= remainingSealTokenIds[2] && RarityTraitsByKey["Seal"].Diamond >= (remainingSealTokenIds[1] + 1);
-    bool sealGoldNFTIsPicked = sealTokenId <= remainingSealTokenIds[3] && RarityTraitsByKey["Seal"].Gold >= (remainingSealTokenIds[2] + 1);
-
+    require(sealTokensLeft > 0 && sealTokensLeft <= (sealTokenRarityIndices[3]-whaleTokenRarityIndices[2]), "the seal NFTs are sold out");
     require(PRICE_PER_SEAL_TOKEN <= msg.value, "Ether value sent is not correct");
+    
+    uint256 i = uint256(uint160(address(msg.sender)));
+    uint256 sealTokenId = whaleTokenRarityIndices[2] + ((block.difficulty + i / sealTokensLeft) % sealTokensLeft + 1);
+
+    bool sealMyceliaNFTIsPicked = sealTokenId <= sealTokenRarityIndices[0] && RarityTraitsByKey["Seal"].Mycelia >= (whaleTokenRarityIndices[2] + 1); 
+    bool sealObsidianNFTIsPicked = sealTokenId <= sealTokenRarityIndices[1] && RarityTraitsByKey["Seal"].Obsidian >= (sealTokenRarityIndices[0] + 1);
+    bool sealDiamondNFTIsPicked = sealTokenId <= sealTokenRarityIndices[2] && RarityTraitsByKey["Seal"].Diamond >= (sealTokenRarityIndices[1] + 1);
+    bool sealGoldNFTIsPicked = sealTokenId <= sealTokenRarityIndices[3] && RarityTraitsByKey["Seal"].Gold >= (sealTokenRarityIndices[2] + 1);
 
     if (sealMyceliaNFTIsPicked) {
-      _sealMint(msg.sender, RarityTraitsByKey["Seal"].Mycelia, ''); 
-      RarityTraitsByKey["Seal"].Mycelia--;
+        mintMycelia("Seal");
+
     } else if (sealObsidianNFTIsPicked) {
-      _sealMint(msg.sender, RarityTraitsByKey["Seal"].Obsidian, '');
-      RarityTraitsByKey["Seal"].Obsidian--;
+        mintObsidian("Seal");
+
     } else if (sealDiamondNFTIsPicked) {
-      _sealMint(msg.sender, RarityTraitsByKey["Seal"].Diamond, ''); 
-      RarityTraitsByKey["Seal"].Diamond--;
+        mintDiamond("Seal");
+
     } else if (sealGoldNFTIsPicked) {
-      _sealMint(msg.sender, RarityTraitsByKey["Seal"].Gold, ''); 
-      RarityTraitsByKey["Seal"].Gold--;
+        mintGold("Seal");
     }
     sealTokensLeft--;
   }
 
   function mintRandomPlanktonNFT() public payable {
-    uint256 i = uint256(uint160(address(msg.sender)));
-    uint256 planktonTokenId = remainingSealTokenIds[3] + ((block.difficulty + i / planktonTokensLeft) % planktonTokensLeft + 1); 
-
-    bool planktonMyceliaNFTIsPicked = planktonTokenId <= remainingPlanktonTokenIds[0] && RarityTraitsByKey["Plankton"].Mycelia >= (remainingSealTokenIds[3] + 1);
-    bool planktonObsidianNFTIsPicked = planktonTokenId <= remainingPlanktonTokenIds[1] && RarityTraitsByKey["Plankton"].Obsidian >= (remainingPlanktonTokenIds[0] + 1);
-    bool planktonDiamondNFTIsPicked = planktonTokenId <= remainingPlanktonTokenIds[2]  && RarityTraitsByKey["Plankton"].Diamond >= (remainingPlanktonTokenIds[1] + 1);
-    bool planktonGoldNFTIsPicked = planktonTokenId <= remainingPlanktonTokenIds[3] && RarityTraitsByKey["Plankton"].Gold >= (remainingPlanktonTokenIds[2] + 1);
-    bool planktonSilverNFTIsPicked = planktonTokenId <= remainingPlanktonTokenIds[4] && RarityTraitsByKey["Plankton"].Silver >= (remainingPlanktonTokenIds[3] + 1);
-
+    require(planktonTokensLeft > 0 && planktonTokensLeft <= (planktonTokenRarityIndices[4]-sealTokenRarityIndices[3]), "the plankton NFTs are sold out");
     require(PRICE_PER_PLANKTON_TOKEN <= msg.value, "Ether value sent is not correct");
 
+    uint256 i = uint256(uint160(address(msg.sender)));
+    uint256 planktonTokenId = sealTokenRarityIndices[3] + ((block.difficulty + i / planktonTokensLeft) % planktonTokensLeft + 1); 
+
+    bool planktonMyceliaNFTIsPicked = planktonTokenId <= planktonTokenRarityIndices[0] && RarityTraitsByKey["Plankton"].Mycelia >= (sealTokenRarityIndices[3] + 1);
+    bool planktonObsidianNFTIsPicked = planktonTokenId <= planktonTokenRarityIndices[1] && RarityTraitsByKey["Plankton"].Obsidian >= (planktonTokenRarityIndices[0] + 1);
+    bool planktonDiamondNFTIsPicked = planktonTokenId <= planktonTokenRarityIndices[2]  && RarityTraitsByKey["Plankton"].Diamond >= (planktonTokenRarityIndices[1] + 1);
+    bool planktonGoldNFTIsPicked = planktonTokenId <= planktonTokenRarityIndices[3] && RarityTraitsByKey["Plankton"].Gold >= (planktonTokenRarityIndices[2] + 1);
+    bool planktonSilverNFTIsPicked = planktonTokenId <= planktonTokenRarityIndices[4] && RarityTraitsByKey["Plankton"].Silver >= (planktonTokenRarityIndices[3] + 1);
+
     if (planktonMyceliaNFTIsPicked) {
-      _planktonMint(msg.sender, RarityTraitsByKey["Plankton"].Mycelia, '');
-      RarityTraitsByKey["Plankton"].Mycelia--;
+        mintMycelia("Plankton");
+    
     } else if (planktonObsidianNFTIsPicked) {
-      _planktonMint(msg.sender, RarityTraitsByKey["Plankton"].Obsidian, ''); 
-      RarityTraitsByKey["Plankton"].Obsidian--;
+        mintObsidian("Plankton");
+
     } else if (planktonDiamondNFTIsPicked) {
-      _planktonMint(msg.sender, RarityTraitsByKey["Plankton"].Diamond, '');
-      RarityTraitsByKey["Plankton"].Diamond--;
+        mintDiamond("Plankton");
+
     } else if (planktonGoldNFTIsPicked) {
-      _planktonMint(msg.sender, RarityTraitsByKey["Plankton"].Gold, ''); 
-      RarityTraitsByKey["Plankton"].Gold--;
+        mintGold("Plankton");
+
     } else if (planktonSilverNFTIsPicked) {
-      _planktonMint(msg.sender, RarityTraitsByKey["Plankton"].Silver, ''); 
-      RarityTraitsByKey["Plankton"].Silver--;
+        mintSilver();
     }
     planktonTokensLeft--;
   }
 
-  function _whaleMint(address recipient, uint256 whaleTokenId, bytes memory data) internal {
-    require(whaleTokenId >= 1 && whaleTokenId <= remainingWhaleTokenIds[2], "the whale NFTs are sold out");
-    _safeMint(recipient, whaleTokenId, data);
-  }
+    function mintMycelia(string memory mintType) public {
+        _selectiveMint(msg.sender, RarityTraitsByKey[mintType].Mycelia);
+        emit returnRarityByTokenId(RarityTraitsByKey[mintType].Mycelia, "Mycelia");  
+        RarityTraitsByKey[mintType].Mycelia--;
+    }
 
-  function _sealMint(address recipient, uint256 sealTokenId, bytes memory data) internal {
-    require(sealTokenId >= (remainingWhaleTokenIds[2] + 1) && sealTokenId <= remainingSealTokenIds[3], "the seal NFTs are sold out");
-    _safeMint(recipient, sealTokenId, data);
-  }
+    function mintObsidian(string memory mintType) public {
+        _selectiveMint(msg.sender, RarityTraitsByKey[mintType].Obsidian);
+        emit returnRarityByTokenId(RarityTraitsByKey[mintType].Obsidian, "Obsidian");  
+        RarityTraitsByKey[mintType].Obsidian--;
+    }
 
-  function _planktonMint(address recipient, uint256 planktonTokenId, bytes memory data) internal {
-    require(planktonTokenId >= (remainingSealTokenIds[3] + 1) && planktonTokenId <= remainingPlanktonTokenIds[4], "the plankton NFTs are sold out");
-    _safeMint(recipient, planktonTokenId, data);
-  }
+    function mintDiamond(string memory mintType) public {
+        _selectiveMint(msg.sender, RarityTraitsByKey[mintType].Diamond);
+        emit returnRarityByTokenId(RarityTraitsByKey[mintType].Diamond, "Diamond");  
+        RarityTraitsByKey[mintType].Diamond--;
+    }
+
+    function mintGold(string memory mintType) public {
+        _selectiveMint(msg.sender, RarityTraitsByKey[mintType].Diamond);
+        emit returnRarityByTokenId(RarityTraitsByKey[mintType].Diamond, "Diamond");  
+        RarityTraitsByKey[mintType].Diamond--;
+    }
+
+    function mintSilver() public {
+      _selectiveMint(msg.sender, RarityTraitsByKey["Plankton"].Silver);
+      emit returnRarityByTokenId(RarityTraitsByKey["Plankton"].Silver, "Silver"); 
+      RarityTraitsByKey["Plankton"].Silver--;
+    }
+
 
   function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721, IERC165) returns (bool) {
     return interfaceId == type(IERC2981).interfaceId || super.supportsInterface(interfaceId);
@@ -175,42 +198,78 @@ contract MembershipNft is ERC721, Ownable, IERC2981, WhiteListed {
   * @dev  rarity of a token Id is returned using an event
   * @param _tokenId is the token Id of the NFT of interest
   */
-  function getRarityByTokenId(uint256 _tokenId) external returns(string memory rarity) {
-    if((_tokenId <= remainingWhaleTokenIds[0] && _tokenId > 0) && (_tokenId <= remainingSealTokenIds[0] && _tokenId > remainingWhaleTokenIds[2])) {
-        emit returnRarityByTokenId(_tokenId, "Mycelia");
+  function getRarityByTokenId(uint256 _tokenId) external view returns(string memory rarity) {
+    //whale token Id 1 to 50
+    //mycelia is token Id 1 to 3
+    //seal token Id 50 to 200
+    //mycelia is 50 to 53
+    //plankton is token Id 200 to 3000 
+    //mycelia is 200 to 203
+
+    // mycelia is tokenId  1 - 12 // this needs to keep track of how many Mycelia NFTs have been minted per each minting function.
+    // obsidian is tokenId 13 - 63 
+    // gold                64 - 250 
+
+    //a plankton can mint a mycelia, gold, diamond, silver, obsidian
+    //a seal can mint a mycelia, diamond, obsidian gold
+    //a whale can mint a mycelia, diamond, obsidian
+
+//1 to 3; 50 to 53; 200 to 203
+/*
+remaininghaletokenIds
+struct
+    mycelia
+    obsidian
+    etc
+*/
+
+    bool myceliaTokenIdIsGiven = (_tokenId > 0 && _tokenId <= whaleTokenRarityIndices[0]) 
+            || (_tokenId >= whaleTokenRarityIndices[2] && _tokenId <= sealTokenRarityIndices[0]) 
+            || (_tokenId >= sealTokenRarityIndices[3] && _tokenId <= planktonTokenRarityIndices[0]);
+
+    bool obsidianTokenIdIsGiven = (_tokenId >= whaleTokenRarityIndices[0] && _tokenId <= whaleTokenRarityIndices[1]) 
+            || (_tokenId > sealTokenRarityIndices[0] && _tokenId <= sealTokenRarityIndices[1]) 
+            || (_tokenId > planktonTokenRarityIndices[0] && _tokenId <= planktonTokenRarityIndices[2]);
+
+    bool diamondTokenIdIsGiven = (_tokenId >= whaleTokenRarityIndices[1] && _tokenId <= whaleTokenRarityIndices[2]) 
+            || (_tokenId > sealTokenRarityIndices[1] && _tokenId <= sealTokenRarityIndices[2]) 
+            || (_tokenId > planktonTokenRarityIndices[1] && _tokenId <= planktonTokenRarityIndices[2]);
+
+    bool goldTokenIdIsGiven = (_tokenId > sealTokenRarityIndices[2] && _tokenId <= sealTokenRarityIndices[3]) 
+            || (_tokenId > planktonTokenRarityIndices[2] && _tokenId <= planktonTokenRarityIndices[3]);
+            
+    bool silverTokenIdIsGiven = (_tokenId > planktonTokenRarityIndices[3] && _tokenId <= planktonTokenRarityIndices[4]);
+
+    if(myceliaTokenIdIsGiven) {
         return rarity = "Mycelia";
-    } else if(_tokenId <= remainingWhaleTokenIds[0] && _tokenId > 0) {
-        emit returnRarityByTokenId(_tokenId, "Obsidian");
+    } else if(obsidianTokenIdIsGiven) {
         return rarity = "Obsidian";
-    } else if(_tokenId <= remainingSealTokenIds[0] && _tokenId > remainingWhaleTokenIds[2]) {
-        emit returnRarityByTokenId(_tokenId, "Diamond");
+    } else if(diamondTokenIdIsGiven) {
         return rarity = "Diamond";
-    } else if(_tokenId <= remainingSealTokenIds[2] && _tokenId > remainingSealTokenIds[1]) {
-        emit returnRarityByTokenId(_tokenId, "Gold");
+    } else if(goldTokenIdIsGiven) {
         return rarity = "Gold";
-    } else if(_tokenId > 0) {
-        emit returnRarityByTokenId(_tokenId, "Silver");
+    } else if(silverTokenIdIsGiven) {
         return rarity = "Silver";
     }
   }
   
-  function allowListMint() external payable {
-    require(isAllowListActive == true, "Allow list is not active");
-    require(AllowList[msg.sender] == true, "you already minted an NFT");
-    if (ChoiceList[msg.sender] == 1) {
-      require(PRICE_PER_WHALE_TOKEN <= msg.value, "Ether value sent is not correct");
-      mintRandomWhaleNFT();
-      AllowList[msg.sender] = false;
-    } else if (ChoiceList[msg.sender] == 2) {
-      require(PRICE_PER_SEAL_TOKEN <= msg.value, "Ether value sent is not correct");
-      mintRandomSealNFT();
-      AllowList[msg.sender] = false;
-    } else if (ChoiceList[msg.sender] == 3) {
-      require(PRICE_PER_PLANKTON_TOKEN <= msg.value, "Ether value sent is not correct");
-      mintRandomPlanktonNFT();
-      AllowList[msg.sender] = false;
-    }
-  }
+//   function allowListMint() external payable {
+//     require(isAllowListActive == true, "Allow list is not active");
+//     require(AllowList[msg.sender] == true, "you already minted an NFT");
+//     if (ChoiceList[msg.sender] == 1) {
+//       require(PRICE_PER_WHALE_TOKEN <= msg.value, "Ether value sent is not correct");
+//       mintRandomWhaleNFT();
+//       AllowList[msg.sender] = false;
+//     } else if (ChoiceList[msg.sender] == 2) {
+//       require(PRICE_PER_SEAL_TOKEN <= msg.value, "Ether value sent is not correct");
+//       mintRandomSealNFT();
+//       AllowList[msg.sender] = false;
+//     } else if (ChoiceList[msg.sender] == 3) {
+//       require(PRICE_PER_PLANKTON_TOKEN <= msg.value, "Ether value sent is not correct");
+//       mintRandomPlanktonNFT();
+//       AllowList[msg.sender] = false;
+//     }
+//   }
 
   
   function settingMyceliaArtists(address[] memory _artists, uint256[] memory _tokenIds) public {
@@ -224,23 +283,20 @@ contract MembershipNft is ERC721, Ownable, IERC2981, WhiteListed {
     * @param _tokenId is the tokenId of an NFT that has been sold on the NFT marketplace
     * @param _salePrice is the price of the sale of the given tokenId
     */
-    function royaltyInfo(
-        uint256 _tokenId,
-        uint256 _salePrice
-    ) external view override returns (
-        address,
-        uint256 royaltyAmount
-    ) {
-        royaltyAmount = (_salePrice / 100) * 10;
-        if ((_tokenId <= remainingWhaleTokenIds[0]) || (_tokenId >= remainingWhaleTokenIds[2] && _tokenId <= remainingSealTokenIds[0]) 
-            || (_tokenId >= remainingSealTokenIds[3] && _tokenId <= remainingPlanktonTokenIds[0])) {
-            return(myceliaArtists[_tokenId], royaltyAmount);
-        } else {
-            return(royaltyDistributorAddress, royaltyAmount); 
-        }
-    }
-//     // find out what artist token sold (only for member NFT)
-//     // if token is mycelia, give 10% to artist
-//     // else transfer 10% to smart contract that distributes royalties to that artist
+  function royaltyInfo(
+    uint256 _tokenId,
+    uint256 _salePrice
+  ) external view override returns (
+    address,
+    uint256 royaltyAmount
+  ) {
+    royaltyAmount = (_salePrice / 100) * 10;
+      if ((_tokenId <= whaleTokenRarityIndices[0]) || (_tokenId >= whaleTokenRarityIndices[2] && _tokenId <= sealTokenRarityIndices[0]) 
+         || (_tokenId >= sealTokenRarityIndices[3] && _tokenId <= planktonTokenRarityIndices[0])) {
+         return(myceliaArtists[_tokenId], royaltyAmount);
+      } else {
+         return(royaltyDistributorAddress, royaltyAmount); 
+      }
+  }
 
 }

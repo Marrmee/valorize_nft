@@ -26,15 +26,7 @@ contract ExposedMembershipNft is MembershipNft {
         URI = _URI_;
     }
 
-    function whaleMint(address recipient, uint256 whaleTokenId, bytes memory data) public {
-        return _whaleMint(recipient, whaleTokenId, data);
-    }
-
-    function sealMint(address recipient, uint256 sealTokenId, bytes memory data) public {
-        return _sealMint(recipient, sealTokenId, data);
-    }
-
-    function planktonMint(address recipient, uint256 planktonTokenId, bytes memory data) public {
-        return _planktonMint(recipient, planktonTokenId, data);
+    function mint(address recipient, uint256 tokenId) public {
+        return _selectiveMint(recipient, tokenId);
     }
 }

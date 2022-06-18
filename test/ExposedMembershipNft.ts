@@ -59,17 +59,17 @@ describe("ExposedMembershipNft", () => {
 
     it("mints a random seal NFT", async () => {
       const overridesSeal = {value: ethers.utils.parseEther("0.2")}
-      const leftBeforeMint = await membershipNft.whaleTokensLeft();;
+      const leftBeforeMint = await membershipNft.sealTokensLeft();;
       await membershipNft.mintRandomSealNFT(overridesSeal);
-      const leftAfterMint = await membershipNft.whaleTokensLeft();;
+      const leftAfterMint = await membershipNft.sealTokensLeft();;
       expect(leftBeforeMint).to.equal(leftAfterMint.add(1));
     });
 
     it("mints a random plankton NFT", async () => {
       const overridesPlankton = {value: ethers.utils.parseEther("0.1")}
-      const leftBeforeMint = await membershipNft.whaleTokensLeft();
+      const leftBeforeMint = await membershipNft.planktonTokensLeft();
       await membershipNft.mintRandomPlanktonNFT(overridesPlankton);
-      const leftAfterMint = await membershipNft.whaleTokensLeft();
+      const leftAfterMint = await membershipNft.planktonTokensLeft();
       expect(leftBeforeMint).to.equal(leftAfterMint.add(1));
     });
 
@@ -77,7 +77,6 @@ describe("ExposedMembershipNft", () => {
       const overridesWhale = {value: ethers.utils.parseEther("1.0")}
       await membershipNft.mintRandomWhaleNFT(overridesWhale);
       await membershipNft.mintRandomWhaleNFT(overridesWhale);
-      const onlyMyceliaTokens = REMAINING_WHALE_TOKEN_IDS_1[0];
       const whaleDiamondId = await (await membershipNft.RarityTraitsByKey("Whale")).Diamond;
       expect(whaleDiamondId).to.equal(48);
     });
@@ -86,59 +85,59 @@ describe("ExposedMembershipNft", () => {
   describe("Minting non-random plankton, seal and whale NFTs", async () => {
     beforeEach(setupMembershipNft)
 
-    it("mints a mycelia NFT using whaleMint", async () => {
+    it("mints a mycelia NFT using a whale token Id", async () => {
       const whaleMyceliaId = await (await membershipNft.RarityTraitsByKey("Whale")).Mycelia;
       const recipientAddress = await addresses[0].getAddress();
-      const data = '0x12345678';
-      await membershipNft.whaleMint(recipientAddress, whaleMyceliaId, data);
+      await membershipNft.mint(recipientAddress, whaleMyceliaId); 
       const recipientBalanceAfterMint = await membershipNft.balanceOf(recipientAddress);
       expect(recipientBalanceAfterMint).to.equal(1);
     });
     
-    it("mints a diamond NFT using sealMint", async () => {
+    it("mints a diamond NFT using a seal token Id", async () => {
       const sealDiamondId = await (await membershipNft.RarityTraitsByKey("Seal")).Diamond;
       const recipientAddress = await addresses[0].getAddress();
       const data = '0x12345678';
-      await membershipNft.sealMint(recipientAddress, sealDiamondId, data);
+      await membershipNft.mint(recipientAddress, sealDiamondId);
       const recipientBalanceAfterMint = await membershipNft.balanceOf(recipientAddress);
       expect(recipientBalanceAfterMint).to.equal(1);
     });
 
-    it("mints a silver NFT using planktonMint", async () => {
+    it("mints a silver NFT using a plankton token Id", async () => {
       const planktonSilverId = await (await membershipNft.RarityTraitsByKey("Plankton")).Silver;
       const recipientAddress = await addresses[0].getAddress();
       const data = '0x12345678';
-      await membershipNft.planktonMint(recipientAddress, planktonSilverId, data);
+      await membershipNft.mint(recipientAddress, planktonSilverId);
       const recipientBalanceAfterMint = await membershipNft.balanceOf(recipientAddress);
       expect(recipientBalanceAfterMint).to.equal(1);
     });
 
-    it("reverts the minting of NFTs using whaleMint when tokenIds 1 to 50 are not available", async () => {
-      const planktonSilverId = await (await membershipNft.RarityTraitsByKey("Plankton")).Silver;
-      const recipientAddress = await addresses[0].getAddress();
-      const data = '0x12345678';
-      await expect(membershipNft.whaleMint(recipientAddress, planktonSilverId, data)
-      ).to.be.revertedWith(
-        "the whale NFTs are sold out");
-    });
 
-    it("reverts the minting of NFTs using sealMint when tokenIds 51 to 200 are not available", async () => {
-      const planktonSilverId = await (await membershipNft.RarityTraitsByKey("Plankton")).Silver;
-      const recipientAddress = await addresses[0].getAddress();
-      const data = '0x12345678';
-      await expect(membershipNft.sealMint(recipientAddress, planktonSilverId, data))
-      .to.be.revertedWith(
-        "the seal NFTs are sold out");
-    });
+    // it("reverts the minting of NFTs using whaleMint when tokenIds 1 to 50 are not available", async () => {
+    //   const planktonSilverId = await (await membershipNft.RarityTraitsByKey("Plankton")).Silver;
+    //   const recipientAddress = await addresses[0].getAddress();
+    //   const data = '0x12345678';
+    //   await expect(membershipNft._mint(recipientAddress, planktonSilverId, data)
+    //   ).to.be.revertedWith(
+    //     "the whale NFTs are sold out");
+    // });
 
-    it("reverts the minting of NFTs using planktonMint when tokenIds 201 to 3000 are not available", async () => {
-      const whaleDiamondId = await (await membershipNft.RarityTraitsByKey("Whale")).Diamond;
-      const recipientAddress = await addresses[0].getAddress();
-      const data = '0x12345678';
-      await expect(membershipNft.planktonMint(recipientAddress, whaleDiamondId, data)
-      ).to.be.revertedWith(
-      "the plankton NFTs are sold out");
-    });
+    // it("reverts the minting of NFTs using sealMint when tokenIds 51 to 200 are not available", async () => {
+    //   const planktonSilverId = await (await membershipNft.RarityTraitsByKey("Plankton")).Silver;
+    //   const recipientAddress = await addresses[0].getAddress();
+    //   const data = '0x12345678';
+    //   await expect(membershipNft.sealMint(recipientAddress, planktonSilverId, data))
+    //   .to.be.revertedWith(
+    //     "the seal NFTs are sold out");
+    // });
+
+    // it("reverts the minting of NFTs using planktonMint when tokenIds 201 to 3000 are not available", async () => {
+    //   const whaleDiamondId = await (await membershipNft.RarityTraitsByKey("Whale")).Diamond;
+    //   const recipientAddress = await addresses[0].getAddress();
+    //   const data = '0x12345678';
+    //   await expect(membershipNft.planktonMint(recipientAddress, whaleDiamondId, data)
+    //   ).to.be.revertedWith(
+    //   "the plankton NFTs are sold out");
+    // });
 
     // it("mints an Obsidian NFT instead of a Diamond NFT using the whale function", async () => {
     //   const overridesWhale = {value: ethers.utils.parseEther("1.0")}
@@ -150,46 +149,46 @@ describe("ExposedMembershipNft", () => {
     // });
   });
 
-  describe("Setting up an allowlist and let the chosen address make a mint of choice", async () => {
-    beforeEach(setupMembershipNft)
+  // describe("Setting up an allowlist and let the chosen address make a mint of choice", async () => {
+  //   beforeEach(setupMembershipNft)
 
-    it("sets allowlisted addresses to only mint one NFT", async () => {
-      const whaleAddresses = [await addresses[0].getAddress(), await addresses[1].getAddress()];
-      const sealAddresses = [await addresses[2].getAddress(), await addresses[3].getAddress()];
-      const planktonAddresses = [await addresses[4].getAddress(), await addresses[5].getAddress()];
-      await membershipNft.setAllowLists(whaleAddresses, sealAddresses, planktonAddresses);
-      expect(await membershipNft.AllowList(planktonAddresses[0])).to.equal(true);
-    });
+  //   it("sets allowlisted addresses to only mint one NFT", async () => {
+  //     const whaleAddresses = [await addresses[0].getAddress(), await addresses[1].getAddress()];
+  //     const sealAddresses = [await addresses[2].getAddress(), await addresses[3].getAddress()];
+  //     const planktonAddresses = [await addresses[4].getAddress(), await addresses[5].getAddress()];
+  //     await membershipNft.setAllowLists(whaleAddresses, sealAddresses, planktonAddresses);
+  //     expect(await membershipNft.AllowList(planktonAddresses[0])).to.equal(true);
+  //   });
 
-    it("sets allowlisted addresses to NFT choice", async () => {
-      const whaleAddresses = [await addresses[0].getAddress(), await addresses[1].getAddress()];
-      const sealAddresses = [await addresses[2].getAddress(), await addresses[3].getAddress()];
-      const planktonAddresses = [await addresses[4].getAddress(), await addresses[5].getAddress()];
-      await membershipNft.setAllowLists(whaleAddresses, sealAddresses, planktonAddresses);
-      expect(await membershipNft.ChoiceList(sealAddresses[0])).to.equal(2);
-    });
+  //   it("sets allowlisted addresses to NFT choice", async () => {
+  //     const whaleAddresses = [await addresses[0].getAddress(), await addresses[1].getAddress()];
+  //     const sealAddresses = [await addresses[2].getAddress(), await addresses[3].getAddress()];
+  //     const planktonAddresses = [await addresses[4].getAddress(), await addresses[5].getAddress()];
+  //     await membershipNft.setAllowLists(whaleAddresses, sealAddresses, planktonAddresses);
+  //     expect(await membershipNft.ChoiceList(sealAddresses[0])).to.equal(2);
+  //   });
 
-    it("sets the allowlist while inactive and allows minting while the allow list is active", async () => {
-      const whaleAddresses = [await addresses[0].getAddress(), await addresses[1].getAddress()];
-      const sealAddresses = [await addresses[2].getAddress(), await addresses[3].getAddress()];
-      const planktonAddresses = [await addresses[4].getAddress(), await addresses[5].getAddress()];
-      await membershipNft.setAllowLists(whaleAddresses, sealAddresses, planktonAddresses);
-      await membershipNft.connect(deployer).setIsAllowListActive(true);
-      await membershipNft.connect(addresses[0]).allowListMint({value: ethers.utils.parseEther("1.0")});
-      const recipientBalanceAfterMint = await membershipNft.balanceOf(whaleAddresses[0]);
-      expect(recipientBalanceAfterMint).to.equal(1);
-    });
+  //   it("sets the allowlist while inactive and allows minting while the allow list is active", async () => {
+  //     const whaleAddresses = [await addresses[0].getAddress(), await addresses[1].getAddress()];
+  //     const sealAddresses = [await addresses[2].getAddress(), await addresses[3].getAddress()];
+  //     const planktonAddresses = [await addresses[4].getAddress(), await addresses[5].getAddress()];
+  //     await membershipNft.setAllowLists(whaleAddresses, sealAddresses, planktonAddresses);
+  //     await membershipNft.connect(deployer).setIsAllowListActive(true);
+  //     await membershipNft.connect(addresses[0]).allowListMint({value: ethers.utils.parseEther("1.0")});
+  //     const recipientBalanceAfterMint = await membershipNft.balanceOf(whaleAddresses[0]);
+  //     expect(recipientBalanceAfterMint).to.equal(1);
+  //   });
 
-    it("does not mint an NFT when the whitelisted address does not pay the correct amount", async () => {
-      const whaleAddresses = [await addresses[0].getAddress(), await addresses[1].getAddress()];
-      const sealAddresses = [await addresses[2].getAddress(), await addresses[3].getAddress()];
-      const planktonAddresses = [await addresses[4].getAddress(), await addresses[5].getAddress()];
-      await membershipNft.setAllowLists(whaleAddresses, sealAddresses, planktonAddresses);
-      await membershipNft.connect(deployer).setIsAllowListActive(true);
-      await expect(membershipNft.connect(addresses[0]).allowListMint({value: ethers.utils.parseEther("0.2")})
-      ).to.be.revertedWith("Ether value sent is not correct");
-    });
-  });
+  //   it("does not mint an NFT when the whitelisted address does not pay the correct amount", async () => {
+  //     const whaleAddresses = [await addresses[0].getAddress(), await addresses[1].getAddress()];
+  //     const sealAddresses = [await addresses[2].getAddress(), await addresses[3].getAddress()];
+  //     const planktonAddresses = [await addresses[4].getAddress(), await addresses[5].getAddress()];
+  //     await membershipNft.setAllowLists(whaleAddresses, sealAddresses, planktonAddresses);
+  //     await membershipNft.connect(deployer).setIsAllowListActive(true);
+  //     await expect(membershipNft.connect(addresses[0]).allowListMint({value: ethers.utils.parseEther("0.2")})
+  //     ).to.be.revertedWith("Ether value sent is not correct");
+  //   });
+  // });
 
   describe("setting the token URIs", async () => {
     beforeEach(setupMembershipNft)
@@ -198,7 +197,7 @@ describe("ExposedMembershipNft", () => {
       const whaleMyceliaId = await (await membershipNft.RarityTraitsByKey("Whale")).Mycelia;
       const recipientAddress = await addresses[0].getAddress();
       const data = '0x12345678';
-      await membershipNft.whaleMint(recipientAddress, whaleMyceliaId, data);
+      await membershipNft.mint(recipientAddress, whaleMyceliaId);
       const findTokenURI = await membershipNft.tokenURI(whaleMyceliaId);
       expect(findTokenURI).to.equal("https://token-cdn-domain/3")
     });
@@ -215,14 +214,14 @@ describe("ExposedMembershipNft", () => {
       expect(artistAddress).to.equal(uniqueArtists[1]);
     });
 
-    it("sends the correct amount to the mycelia artist", async () => {
-      const uniqueArtists = [await addresses[0].getAddress(), await addresses[1].getAddress(), await addresses[2].getAddress()];
-      const myceliaTokenIds = [1, 2, 3];
-      await membershipNft.settingMyceliaArtists(uniqueArtists, myceliaTokenIds);
-      await membershipNft.royaltyInfo(2, 10);
-      const artistAddressBalance = await membershipNft.balanceOf(await addresses[1].getAddress());
-      expect(artistAddressBalance).to.equal(1);
-    });
+    // it("sends the correct amount to the mycelia artist", async () => {
+    //   const uniqueArtists = [await addresses[0].getAddress(), await addresses[1].getAddress(), await addresses[2].getAddress()];
+    //   const myceliaTokenIds = [1, 2, 3];
+    //   await membershipNft.settingMyceliaArtists(uniqueArtists, myceliaTokenIds);
+    //   await membershipNft.royaltyInfo(2, 10);
+    //   const artistAddressBalance = await membershipNft.balanceOf(await addresses[1].getAddress());
+    //   expect(artistAddressBalance).to.equal(1);
+    // });
   });
 
   // describe("Deployment with different remaining whale token Ids", async () => {
