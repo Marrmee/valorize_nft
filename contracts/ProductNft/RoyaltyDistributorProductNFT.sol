@@ -3,7 +3,7 @@
 pragma solidity ^0.8.0;
 
 
-contract RoyaltyDistributor {
+contract RoyaltyDistributorProductNft {
 
   string URI;
 
@@ -13,7 +13,7 @@ contract RoyaltyDistributor {
     URI = _URI;
   }
 
-  address payable artist1;
+  address payable artist;
   address payable valorize = payable(0x43402200629A8Ea23F0A8B7eC9E0587fAdc9616b);
 
   struct GenerativeRoyaltyInfo {
@@ -32,8 +32,8 @@ contract RoyaltyDistributor {
     uint256[] memory tokenIds
   ) internal virtual {
       for(uint256 i=0; i <= tokenIds.length; i++) {
-        require(artist1 != address(0), "ERC2981: Invalid parameters");
-        generativeTokenRoyalty[tokenIds[i]] = GenerativeRoyaltyInfo(artist1, valorize, 5);
+        require(artist != address(0), "ERC2981: Invalid parameters");
+        generativeTokenRoyalty[tokenIds[i]] = GenerativeRoyaltyInfo(artist, valorize, 5);
       }
   }
 
@@ -44,7 +44,6 @@ contract RoyaltyDistributor {
     (generativeRoyalty.valorizeAddress).transfer(royaltyAmount);
     return (generativeRoyalty.artistAddress, generativeRoyalty.valorizeAddress, royaltyAmount);
   }
-
 }
 //An ethereum address belonging to the contractor will be put in the contract’s 
 //royalty calculator as per the EIP-2981 royalty standard for the sales of 

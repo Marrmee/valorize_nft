@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 //import "./RoyaltyDistributor.sol";
-import "./WhiteListed.sol";
+//import "./WhiteListed.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import { IERC2981, IERC165 } from "@openzeppelin/contracts/interfaces/IERC2981.sol";
 
@@ -21,20 +21,22 @@ import { IERC2981, IERC165 } from "@openzeppelin/contracts/interfaces/IERC2981.s
 * Remember to name things correctly [https://martinfowler.com/bliki/TwoHardThings.html]
 */
 
-contract ProductNft is ERC721, IERC2981, Ownable {
+contract ProductNft is ERC721, IERC2981 {
   string public URI;
   uint256 public constant PRICE_PER_RAREST_TOKEN = 1.5 ether;
   uint256 public constant PRICE_PER_RARER_TOKEN = 0.55 ether;
   uint256 public constant PRICE_PER_RARE_TOKEN = 0.2 ether;
   uint256 public rarestTokensLeft;
+  uint256 public rarerTokensLeft;
   uint256 public rareTokensLeft;
   uint16 public startRarerTokenId;
   uint16 public startRareTokenId;
-  uint16[] remainingRarerTokenIds;
   address royaltyDistributorAddress;
   address addressProductNFTArtist;
+  uint256[] rarerTokenIds;  
 
-  mapping(string => RemainingRarerMints) public RarityTraitsByKey;
+  mapping(uint256 => ProductStatus) public ProductStatusByTokenId;
+  mapping(uint256 => bool) public TokenDeploymentStatus; 
 
   struct RemainingRarerMints {
     uint16 Obsidian;
@@ -42,8 +44,10 @@ contract ProductNft is ERC721, IERC2981, Ownable {
     uint16 Gold;
   }
 
+  enum ProductStatus {not_ready, ready, deployed}
+
   event returnRarityByTokenId(uint256 tokenId, string rarity);
-  //event royaltyInformation(address receiver, uint256 royaltyAmount);
+  event returnRarityByTokenIdAndProductLaunchingStatus(uint256 tokenId, string rarity, ProductStatus);
 
   constructor(    
     string memory _name, 
@@ -52,16 +56,15 @@ contract ProductNft is ERC721, IERC2981, Ownable {
     uint16 _startRarerTokenId,
     uint16 _startRareTokenId,
     uint16 _rarestTokensLeft,
-    uint16 _rareTokensLeft,
-    uint16[] memory _remainingRarerTokenIds
+    uint16 _rarerTokensLeft,
+    uint16 _rareTokensLeft
     ) ERC721(_name, _symbol) {
         URI = _URI;
         startRarerTokenId = _startRarerTokenId;
         startRareTokenId = _startRareTokenId;
         rarestTokensLeft = _rarestTokensLeft;
+        rarerTokensLeft = _rarerTokensLeft;
         rareTokensLeft = _rareTokensLeft;
-        remainingRarerTokenIds = _remainingRarerTokenIds; 
-        RarityTraitsByKey["Rarer"] = RemainingRarerMints(remainingRarerTokenIds[0], remainingRarerTokenIds[1], remainingRarerTokenIds[2]);
     }
 
     function supportsInterface(bytes4 interfaceId) public view override(ERC721, IERC165) returns (bool) {
@@ -86,41 +89,25 @@ contract ProductNft is ERC721, IERC2981, Ownable {
         uint256 rarestTokenId = rarestTokensLeft;
         require(rarestTokenId > 0, "rarest NFTs are sold out");
         require(PRICE_PER_RAREST_TOKEN <= msg.value, "Ether value sent is not correct");
-        _safeMint(msg.sender, rarestTokenId, " ");
-        emit returnRarityByTokenId(rarestTokensLeft, "Mycelia"); 
+        ProductStatusByTokenId[rarestTokenId] = ProductStatus.ready;
+        _safeMint(msg.sender, rarestTokenId);
+        emit returnRarityByTokenIdAndProductLaunchingStatus(rarestTokensLeft, "Mycelia", ProductStatusByTokenId[rarestTokenId]); 
         rarestTokensLeft--;
     }
 
     /**
     * @dev  This minting function allows the minting of Rarer token Ids 10 to 1010.
-    *       These tokenIds are minted in the following order:
-    *       Obsidian (token Ids 10 to 110), Diamond (token Ids 110 to 360) & Gold (token Ids 360 to 1010)
-    *       Every call will increment the tokenId (starting from 10). 
-    *       This function can be called for 0.55 ETH.
+    *       It can be called for 0.55 ETH.
     */
-    function rarerOrderMint() public payable {
-        uint256 rarerTokenId = startRarerTokenId + 1;
+    function rarerMint() public payable {
+        uint256 rarerTokenId = startRarerTokenId + rarerTokensLeft;
         require(rarerTokenId < startRareTokenId, "Rarer Product NFTs are sold out");
         require(PRICE_PER_RARER_TOKEN <= msg.value, "Ether value sent is not correct");
-        
-        bool obsidianNFTsAreFirst = (rarerTokenId <= remainingRarerTokenIds[0] && RarityTraitsByKey["Rarer"].Obsidian > (startRarerTokenId));
-        bool diamondNFTsAreAfter = (rarerTokenId <= remainingRarerTokenIds[1] && RarityTraitsByKey["Rarer"].Diamond > (remainingRarerTokenIds[0]));
-        bool goldNFTsAreLast = (rarerTokenId <= remainingRarerTokenIds[2] && RarityTraitsByKey["Rarer"].Obsidian > remainingRarerTokenIds[1]);
-
-        if (obsidianNFTsAreFirst) {
-            _safeMint(msg.sender, RarityTraitsByKey["Rarer"].Obsidian, '');
-            emit returnRarityByTokenId(RarityTraitsByKey["Rarer"].Obsidian, "Obsidian"); 
-            RarityTraitsByKey["Rarer"].Obsidian--;
-        } else if (diamondNFTsAreAfter) {
-            _safeMint(msg.sender, RarityTraitsByKey["Rarer"].Diamond, '');
-            emit returnRarityByTokenId(RarityTraitsByKey["Rarer"].Diamond, "Diamond"); 
-            RarityTraitsByKey["Rarer"].Diamond--;
-        } else if (goldNFTsAreLast) {
-            _safeMint(msg.sender, RarityTraitsByKey["Rarer"].Gold, '');
-            emit returnRarityByTokenId(RarityTraitsByKey["Rarer"].Gold, "Gold");  
-            RarityTraitsByKey["Rarer"].Gold--;
-        }
-        startRarerTokenId++;
+        ProductStatusByTokenId[rarerTokenId] = ProductStatus.not_ready;
+        _safeMint(msg.sender, rarerTokenId);
+        rarerTokenIds.push(rarerTokenId);
+        emit returnRarityByTokenIdAndProductLaunchingStatus(rarestTokensLeft, "Mycelia", ProductStatusByTokenId[rarerTokenId]); 
+        rarerTokensLeft--;
     }
 
     /**
@@ -133,9 +120,25 @@ contract ProductNft is ERC721, IERC2981, Ownable {
         uint256 rareTokenId = startRareTokenId + rareTokensLeft;
         require(rareTokenId > startRareTokenId, "Rare Product NFTs are sold out");
         require(PRICE_PER_RARE_TOKEN <= msg.value, "Ether value sent is not correct");
+        ProductStatusByTokenId[rareTokenId] = ProductStatus.ready;
         _safeMint(msg.sender, rareTokenId, " ");
-        emit returnRarityByTokenId(rareTokenId, "Silver"); 
+        emit returnRarityByTokenIdAndProductLaunchingStatus(rareTokenId, "Silver", ProductStatusByTokenId[rareTokenId]); 
         rareTokensLeft--;
+    }
+
+    function switchProductStatusAfterTokenLaunch(uint256 tokenId, bool deployed) public {
+        if (deployed == true) {
+            TokenDeploymentStatus[tokenId] = deployed;
+            ProductStatusByTokenId[tokenId] = ProductStatus.deployed;//how does the picture change then?
+        }
+    }
+
+    function switchProductStatusAfterTimePassed(uint256 timeStampForDeployment) public {
+        require(block.timestamp > timeStampForDeployment);
+        for(uint256 i=0; i < rarerTokenIds.length; i++) {
+            require(rarerTokenIds[i] > startRarerTokenId && rarerTokenIds[i] < startRareTokenId);
+            ProductStatusByTokenId[rarerTokenIds[i]] = ProductStatus.ready;
+        }
     }
 
     /**
@@ -146,15 +149,9 @@ contract ProductNft is ERC721, IERC2981, Ownable {
         if(_tokenId < startRarerTokenId) {
             emit returnRarityByTokenId(_tokenId, "Mycelia");
             return rarity = "Mycelia";
-        } else if(_tokenId <= remainingRarerTokenIds[0] && _tokenId > startRarerTokenId) {
+        } else if(_tokenId <= startRareTokenId && _tokenId > startRarerTokenId) {
             emit returnRarityByTokenId(_tokenId, "Obsidian");
-            return rarity = "Obsidian";
-        } else if(_tokenId <= remainingRarerTokenIds[1] && _tokenId > remainingRarerTokenIds[0]) {
-            emit returnRarityByTokenId(_tokenId, "Diamond");
             return rarity = "Diamond";
-        } else if(_tokenId <= remainingRarerTokenIds[2] && _tokenId > remainingRarerTokenIds[1]) {
-            emit returnRarityByTokenId(_tokenId, "Gold");
-            return rarity = "Gold";
         } else if(_tokenId > startRareTokenId) {
             emit returnRarityByTokenId(_tokenId, "Silver");
             return rarity = "Silver";
