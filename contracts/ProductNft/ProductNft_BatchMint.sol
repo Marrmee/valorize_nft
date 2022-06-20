@@ -110,18 +110,19 @@ contract ProductNft is ERC1155, IERC2981 {
         }
 
         require(_amounts[0] >= 1, "You need to mint atleast one NFT");
-        uint256[] memory _newRarestTokenIds = new uint[](rarestTokenAmounts.length); 
+        uint256[] memory _newRarestTokenIdsForThisMint = new uint[](rarestTokenAmounts.length); 
         for (uint256 i = 0; i < rarestTokenAmounts.length; i++) { 
             rarestTokenIds.increment();
             _newRarestTokenId = rarestTokenIds.current();
             require(_newRarestTokenId >= 1 && _newRarestTokenId <= startRarerTokenIdIndex, "Mycelia NFTs are sold out");
-            _newRarestTokenIds[i] = _newRarestTokenId;
-            emit returnRarityByTokenIdAndProductLaunchingStatus(_newRarestTokenIds[i], "Mycelia", ProductStatusByTokenId[_newRarestTokenIds[i]]);
+            _newRarestTokenIdsForThisMint[i] = _newRarestTokenId;
+            ProductStatusByTokenId[_newRareTokenId] = ProductStatus.ready;
+            emit returnRarityByTokenIdAndProductLaunchingStatus(_newRarestTokenId, "Mycelia", ProductStatusByTokenId[_newRarestTokenId]);
         }
-        _mintBatch(msg.sender, _newRarestTokenIds, rarestTokenAmounts, '');
+        _mintBatch(msg.sender, _newRarestTokenIdsForThisMint, rarestTokenAmounts, '');
 
-        emit MintCompleted(msg.sender, _newRarestTokenIds, rarestTokenAmounts);
-        emit ReturnURIandID(_newRarestTokenIds, _newRarestTokenURIs);
+        emit MintCompleted(msg.sender, _newRarestTokenIdsForThisMint, rarestTokenAmounts);
+        emit ReturnURIandID(_newRarestTokenIdsForThisMint, _newRarestTokenURIs);
     }
 
     function rarerBatchMint(
@@ -140,8 +141,8 @@ contract ProductNft is ERC1155, IERC2981 {
             require(_newRarerTokenId >= startRarerTokenIdIndex && _newRarerTokenId <= startRareTokenIdIndex, "Diamond NFTS are sold out");
             _newRarerTokenIdsForThisMint[i] = _newRarerTokenId;
             rarerTokenIdsList.push(_newRarerTokenId);
-            ProductStatusByTokenId[_newRarerTokenIdsForThisMint[i]] = ProductStatus.ready;
-            emit returnRarityByTokenIdAndProductLaunchingStatus(_newRarerTokenIdsForThisMint[i], "Diamond", ProductStatusByTokenId[_newRarerTokenIdsForThisMint[i]]);
+            ProductStatusByTokenId[_newRarerTokenId] = ProductStatus.not_ready;
+            emit returnRarityByTokenIdAndProductLaunchingStatus(_newRarerTokenIdsForThisMint[i], "Diamond", ProductStatusByTokenId[_newRarerTokenId]);
         }
         _mintBatch(msg.sender, _newRarerTokenIdsForThisMint, rarerTokenAmountsForThisMint, '');
         emit MintCompleted(msg.sender, _newRarerTokenIdsForThisMint, rarerTokenAmountsForThisMint);
@@ -157,17 +158,18 @@ contract ProductNft is ERC1155, IERC2981 {
             rareTokenAmounts[i] = i + 1;
         }
         require(_amounts[0] >= 1, "You need to mint atleast one NFT");
-        uint256[] memory _newRareTokenIds = new uint[](rareTokenAmounts.length); 
+        uint256[] memory _newRareTokenIdsForThisMint = new uint[](rareTokenAmounts.length); 
         for (uint256 i = 0; i < rareTokenAmounts.length; i++) { 
             rareTokenIds.increment();
             _newRareTokenId = startRareTokenIdIndex + rareTokenIds.current();
             require(_newRareTokenId >= startRareTokenIdIndex && _newRareTokenId <= 2012, "Silver NFTs are sold out");
-            _newRareTokenIds[i] = _newRareTokenId;
-            emit returnRarityByTokenIdAndProductLaunchingStatus(_newRareTokenIds[i], "Silver", ProductStatusByTokenId[_newRareTokenIds[i]]); 
+            _newRareTokenIdsForThisMint[i] = _newRareTokenId;
+            ProductStatusByTokenId[_newRareTokenId] = ProductStatus.ready;
+            emit returnRarityByTokenIdAndProductLaunchingStatus(_newRareTokenId, "Silver", ProductStatusByTokenId[_newRareTokenId]); 
         }
-        _mintBatch(msg.sender, _newRareTokenIds, rareTokenAmounts, '');
-        emit MintCompleted(msg.sender, _newRareTokenIds, rareTokenAmounts);
-        emit ReturnURIandID(_newRareTokenIds, _newRarestTokenURIs);
+        _mintBatch(msg.sender, _newRareTokenIdsForThisMint, rareTokenAmounts, '');
+        emit MintCompleted(msg.sender, _newRareTokenIdsForThisMint, rareTokenAmounts);
+        emit ReturnURIandID(_newRareTokenIdsForThisMint, _newRarestTokenURIs);
     }
 
     function switchProductStatusAfterTokenLaunch(uint256 tokenId, bool deployed) public {
