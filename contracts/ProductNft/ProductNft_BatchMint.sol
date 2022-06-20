@@ -41,7 +41,8 @@ contract ProductNft is ERC1155, IERC2981 {
   uint16 public startRareTokenIdIndex;
   address royaltyDistributorAddress;
   address addressProductNFTArtist;
-  uint256[] rarerTokenIdsList;   
+  uint256[] rarerTokenIdsList; 
+  //ProductStatus public productStatus;  
 
   mapping(uint256 => ProductStatus) public ProductStatusByTokenId;
   mapping(uint256 => bool) public TokenDeploymentStatus; 
@@ -116,7 +117,7 @@ contract ProductNft is ERC1155, IERC2981 {
             _newRarestTokenId = rarestTokenIds.current();
             require(_newRarestTokenId >= 1 && _newRarestTokenId <= startRarerTokenIdIndex, "Mycelia NFTs are sold out");
             _newRarestTokenIdsForThisMint[i] = _newRarestTokenId;
-            ProductStatusByTokenId[_newRareTokenId] = ProductStatus.ready;
+            ProductStatusByTokenId[_newRarestTokenId] = ProductStatus.ready;
             emit returnRarityByTokenIdAndProductLaunchingStatus(_newRarestTokenId, "Mycelia", ProductStatusByTokenId[_newRarestTokenId]);
         }
         _mintBatch(msg.sender, _newRarestTokenIdsForThisMint, rarestTokenAmounts, '');
