@@ -142,7 +142,7 @@ contract ProductNft is ERC1155, IERC2981 {
             _newRarerTokenIdsForThisMint[i] = _newRarerTokenId;
             rarerTokenIdsList.push(_newRarerTokenId);
             ProductStatusByTokenId[_newRarerTokenId] = ProductStatus.not_ready;
-            emit returnRarityByTokenIdAndProductLaunchingStatus(_newRarerTokenIdsForThisMint[i], "Diamond", ProductStatusByTokenId[_newRarerTokenId]);
+            emit returnRarityByTokenIdAndProductLaunchingStatus(_newRarerTokenId, "Diamond", ProductStatusByTokenId[_newRarerTokenId]);
         }
         _mintBatch(msg.sender, _newRarerTokenIdsForThisMint, rarerTokenAmountsForThisMint, '');
         emit MintCompleted(msg.sender, _newRarerTokenIdsForThisMint, rarerTokenAmountsForThisMint);
