@@ -12,7 +12,7 @@ const { expect } = chai;
 
 const NAME = "ValorizeNFT";
 const SYMBOL = "VALOR";
-const INITIAL_URI = "https://token-cdn-domain/";
+const BASE_URI = "https://token-cdn-domain/";
 const START_RARER = 10;
 const START_RARE = 1010;
 const RAREST_TOKENS_LEFT = 10;
@@ -30,8 +30,8 @@ describe("ProductNft", () => {
 
   const setupProductNft = async () => {
     [deployer, admin1, admin2, vault, ...addresses] = await ethers.getSigners();
-    productNft = await new ProductNftFactory(deployer).deploy(NAME, SYMBOL,
-      INITIAL_URI, START_RARER, START_RARE, RAREST_TOKENS_LEFT, RARE_TOKENS_LEFT, REMAINING_RARER_TOKEN_IDS,
+    productNft = await new ProductNftFactory(deployer).deploy(
+      BASE_URI, START_RARER, START_RARE,
     );
     await productNft.deployed();
   };
