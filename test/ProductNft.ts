@@ -20,7 +20,7 @@ const RARE_TOKENS_LEFT = 1000;
 const REMAINING_RARER_TOKEN_IDS = [110, 360, 1010];//amounts are 100, 250, 650
 
 
-describe("ProductNft", () => {
+describe.only("ProductNft", () => {
   let productNft: ProductNft,
     deployer: Signer,
     admin1: Signer,
@@ -30,9 +30,7 @@ describe("ProductNft", () => {
 
   const setupProductNft = async () => {
     [deployer, admin1, admin2, vault, ...addresses] = await ethers.getSigners();
-    productNft = await new ProductNftFactory(deployer).deploy(
-      BASE_URI, START_RARER, START_RARE,
-    );
+    productNft = await new ProductNftFactory(deployer).deploy(BASE_URI, START_RARER, START_RARE,);
     await productNft.deployed();
   };
 
@@ -47,12 +45,12 @@ describe("ProductNft", () => {
   describe("Minting random plankton, seal and whale NFTs", async () => {
     beforeEach(setupProductNft)
 
-    it("mints a rarest NFT", async () => {
-      const overridesRarest = {value: ethers.utils.parseEther("1.5")}
-      const leftBeforeMint = await productNft.rarestTokensLeft();
-      await productNft.rarestMint(overridesRarest);
-      const leftAfterMint = await productNft.rarestTokensLeft();
-      expect(leftBeforeMint).to.equal(leftAfterMint.add(1));
+    it("batch mints a rarest NFT", async () => {
+      const overridesRarest = {value: ethers.utils.parseEther("7.5")}
+      const tokenCountBeforeMint = await productNft.rarestTokenIds();
+      await productNft.rarestBatchMint(5, overridesRarest);
+      const tokenCountAfterMint = await productNft.rarestTokenIds();
+      expect(tokenCountAfterMint).to.equal(tokenCountBeforeMint.add(5));
     });
 
     it("mints a rarer NFT", async () => {
