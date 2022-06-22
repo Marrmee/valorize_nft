@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.0;
 
-//import "./RoyaltyDistributor.sol";
+import "./RoyaltyDistributorProductNft.sol";
 //import "./WhiteListed.sol";
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import { IERC2981, IERC165 } from "@openzeppelin/contracts/interfaces/IERC2981.sol";
@@ -21,6 +21,7 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 
 contract ProductNft is ERC1155, IERC2981 {
   using Counters for Counters.Counter;
+
   string public baseURI;
   Counters.Counter internal rarestTokenIds;
   Counters.Counter internal rarerTokenIds;
@@ -32,7 +33,6 @@ contract ProductNft is ERC1155, IERC2981 {
   uint16 public startRareTokenIdIndex;
   address royaltyDistributorAddress;
   address addressProductNFTArtist;
-  uint256[] rarerTokenIdsList;
 
   mapping(uint256 => ProductStatus) public ProductStatusByTokenId;
   mapping(uint => string) public _URIS;
@@ -62,7 +62,7 @@ contract ProductNft is ERC1155, IERC2981 {
         return interfaceId == type(IERC2981).interfaceId || super.supportsInterface(interfaceId);
     }
 
-    function _turnAmountIntoArray(uint256 amount) internal pure returns (uint256[] memory tokenAmounts) {
+    function turnAmountIntoArray(uint256 amount) internal pure returns (uint256[] memory tokenAmounts) {
         tokenAmounts = new uint[](amount);
         for (uint256 i = 0; i < amount;) {
             tokenAmounts[i] = i + 1;
@@ -72,7 +72,7 @@ contract ProductNft is ERC1155, IERC2981 {
         }
     }
 
-    function _countBasedOnRarity(uint256 rarity) internal returns (uint256 tokenId) {
+    function countBasedOnRarity(uint256 rarity) internal returns (uint256 tokenId) {
         if(rarity == 1) {
             rarestTokenIds.increment();
             tokenId = rarestTokenIds.current();
@@ -91,7 +91,7 @@ contract ProductNft is ERC1155, IERC2981 {
         }
     }
 
-    function _initialProductStatusBasedOnRarity(uint256 tokenId, uint256 rarity) internal {
+    function initialProductStatusBasedOnRarity(uint256 tokenId, uint256 rarity) internal {
         if (rarity == 1) {
             ProductStatusByTokenId[tokenId] = ProductStatus.ready;
         } else if (rarity == 2) {
@@ -101,12 +101,12 @@ contract ProductNft is ERC1155, IERC2981 {
         }
     }
 
-    function _turnTokenIdsIntoArray(uint256 rarity, uint256 amount) internal returns (uint256[] memory tokenIdArray) {
-        tokenIdArray = new uint[](_turnAmountIntoArray(amount).length); 
-        for (uint256 i = 0; i < _turnAmountIntoArray(amount).length;) { 
-            uint256 currentTokenId = _countBasedOnRarity(rarity);
+    function turnTokenIdsIntoArray(uint256 rarity, uint256 amount) internal returns (uint256[] memory tokenIdArray) {
+        tokenIdArray = new uint[](turnAmountIntoArray(amount).length); 
+        for (uint256 i = 0; i < turnAmountIntoArray(amount).length;) { 
+            uint256 currentTokenId = countBasedOnRarity(rarity);
             tokenIdArray[i] = currentTokenId;
-            _initialProductStatusBasedOnRarity(currentTokenId, rarity);
+            initialProductStatusBasedOnRarity(currentTokenId, rarity);
             _URIS[currentTokenId] = _URI(currentTokenId);
             getTokenInfo(currentTokenId);
             unchecked {
@@ -125,7 +125,7 @@ contract ProductNft is ERC1155, IERC2981 {
     function rarestBatchMint(uint256 amount) public payable {
         require(PRICE_PER_RAREST_TOKEN * amount <= msg.value, "Ether value sent is not correct");
         require(amount >= 1, "You need to mint atleast one NFT");   
-        _mintBatch(msg.sender, _turnTokenIdsIntoArray(1, amount), _turnAmountIntoArray(amount), '');
+        _mintBatch(msg.sender, turnTokenIdsIntoArray(1, amount), turnAmountIntoArray(amount), '');
     }
 
     /**
@@ -138,7 +138,7 @@ contract ProductNft is ERC1155, IERC2981 {
     function rarerBatchMint(uint256 amount) public payable {
         require(PRICE_PER_RARER_TOKEN * amount <= msg.value, "Ether value sent is not correct");
         require(amount >= 1, "You need to mint atleast one NFT");   
-        _mintBatch(msg.sender, _turnTokenIdsIntoArray(2, amount), _turnAmountIntoArray(amount), '');
+        _mintBatch(msg.sender, turnTokenIdsIntoArray(2, amount), turnAmountIntoArray(amount), '');
     }
 
     /**
@@ -151,7 +151,7 @@ contract ProductNft is ERC1155, IERC2981 {
     function rareBatchMint(uint256 amount) public payable {
         require(PRICE_PER_RARE_TOKEN * amount <= msg.value, "Ether value sent is not correct");
         require(amount >= 1, "You need to mint atleast one NFT");   
-        _mintBatch(msg.sender, _turnTokenIdsIntoArray(3, amount), _turnAmountIntoArray(amount), '');
+        _mintBatch(msg.sender, turnTokenIdsIntoArray(3, amount), turnAmountIntoArray(amount), '');
     }
    
     /**
@@ -161,39 +161,32 @@ contract ProductNft is ERC1155, IERC2981 {
     *       using the Valorize Token Launcher
     *@param deployed: set to true if a token has been deployed 
     */
-
-    function switchProductStatus(uint256 tokenId, uint256[] memory tokenIdList, bool deployed) external {
+    function switchProductStatusAfterTokenLaunch(uint256 tokenId, uint256[] memory tokenIdList, bool deployed) public {
         if (deployed == true) {
             ProductStatusByTokenId[tokenId] = ProductStatus.deployed;
-        } else if (deployed =! true) {
+        } else if (deployed != true) {
             for(uint256 i=0; i < tokenIdList.length; i++) {
-            require(rarerTokenIdsList[i] > startRarerTokenIdIndex && rarerTokenIdsList[i] < startRareTokenIdIndex);
-            ProductStatusByTokenId[rarerTokenIdsList[i]] = ProductStatus.ready;
+                require(tokenIdList[i] > startRarerTokenIdIndex && tokenIdList[i] < startRareTokenIdIndex);
+                ProductStatusByTokenId[tokenIdList[i]] = ProductStatus.ready;
             }
         }
     }
+
 
     /**
     * @dev  This function returns the token information 
     *       This includes token id, rarity, product status and URI
     * @param _tokenId is the token Id of the NFT of interest
     */
-    function getTokenInfo(uint256 _tokenId) internal {
+    function getTokenInfo(uint256 _tokenId) public returns(string memory rarity) {
         if(_tokenId < startRarerTokenIdIndex) {
             emit returnTokenInfo(_tokenId, "Mycelia", ProductStatusByTokenId[_tokenId], _URIS[_tokenId]);
-        } else if(_tokenId <= startRareTokenIdIndex && _tokenId > startRarerTokenIdIndex) {
-            emit returnTokenInfo(_tokenId, "Diamond", ProductStatusByTokenId[_tokenId], _URIS[_tokenId]);
-        } else if(_tokenId > startRareTokenIdIndex) {
-            emit returnTokenInfo(_tokenId, "Silver", ProductStatusByTokenId[_tokenId], _URIS[_tokenId]);
-        }
-    }
-
-    function getTokenRarity(uint256 _tokenId) external view returns(string memory rarity) {
-        if(_tokenId < startRarerTokenIdIndex) {
             return rarity = "Mycelia";
         } else if(_tokenId <= startRareTokenIdIndex && _tokenId > startRarerTokenIdIndex) {
+            emit returnTokenInfo(_tokenId, "Diamond", ProductStatusByTokenId[_tokenId], _URIS[_tokenId]);
             return rarity = "Diamond";
         } else if(_tokenId > startRareTokenIdIndex) {
+            emit returnTokenInfo(_tokenId, "Silver", ProductStatusByTokenId[_tokenId], _URIS[_tokenId]);
             return rarity = "Silver";
         }
     }

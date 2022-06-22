@@ -9,3 +9,4 @@ typechain
 build
 contracts/@*
 .env
+contracts-exposed

@@ -10,15 +10,9 @@ chai.use(solidity);
 
 const { expect } = chai;
 
-const NAME = "ValorizeNFT";
-const SYMBOL = "VALOR";
 const BASE_URI = "https://token-cdn-domain/";
-const START_RARER = 10;
-const START_RARE = 1010;
-const RAREST_TOKENS_LEFT = 10;
-const RARE_TOKENS_LEFT = 1000;
-const REMAINING_RARER_TOKEN_IDS = [110, 360, 1010];//amounts are 100, 250, 650
-
+const START_RARER = 12;
+const START_RARE = 1012;
 
 describe.only("ProductNft", () => {
   let productNft: ProductNft,
@@ -48,9 +42,10 @@ describe.only("ProductNft", () => {
     it("batch mints a rarest NFT", async () => {
       const overridesRarest = {value: ethers.utils.parseEther("7.5")}
       const tokenCountBeforeMint = await productNft.rarestTokenIds();
-      await productNft.rarestBatchMint(5, overridesRarest);
+      const mintAmount = 5;
+      await productNft.rarestBatchMint(mintAmount, overridesRarest);
       const tokenCountAfterMint = await productNft.rarestTokenIds();
-      expect(tokenCountAfterMint).to.equal(tokenCountBeforeMint.add(5));
+      expect(tokenCountAfterMint).to.equal(tokenCountBeforeMint.add(mintAmount));
     });
 
     it("mints a rarer NFT", async () => {
@@ -76,10 +71,10 @@ describe.only("ProductNft", () => {
 
     it("sets the token URI for rarest mint", async() => {
       const overridesRarest = {value: ethers.utils.parseEther("1.5")}
-      await productNft.rarestMint(overridesRarest);
-      const tokenId = RAREST_TOKENS_LEFT;
-      const findTokenURI = await productNft.tokenURI(tokenId);
-      expect(findTokenURI).to.equal("https://token-cdn-domain/10");
+      await productNft.rarestBatchMint(overridesRarest);
+      const tokenId = await productNft.rarestTokenIds();
+      const findTokenURI = await productNft._URI(tokenId);
+      expect(findTokenURI).to.equal("https://token-cdn-domain/" + tokenId + ".json");
     });
   });
 

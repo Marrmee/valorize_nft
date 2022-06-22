@@ -7,7 +7,7 @@ import "../MembershipNft.sol";
 /**
 @title MembershipNft
 @author Marco Huberts & Javier Gonzalez
-@dev Implementation of a Membership Non Fungible Token using ERC721B.
+@dev Implementation of an Exposed Membership Non Fungible Token using ERC721.
 */
 
 contract ExposedMembershipNft is MembershipNft {
