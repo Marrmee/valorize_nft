@@ -41,19 +41,20 @@ describe.only("ProductNft", () => {
 
     it("batch mints a rarest NFT", async () => {
       const overridesRarest = {value: ethers.utils.parseEther("7.5")}
-      const tokenCountBeforeMint = await productNft.rarestTokenIds();
+      const tokenCountBeforeMint = await productNft.$rarestTokenIds();
       const mintAmount = 5;
-      await productNft.rarestBatchMint(mintAmount, overridesRarest);
-      const tokenCountAfterMint = await productNft.rarestTokenIds();
+      await productNft.$rarestBatchMint(mintAmount, overridesRarest);
+      const tokenCountAfterMint = await productNft.$rarestTokenIds();
       expect(tokenCountAfterMint).to.equal(tokenCountBeforeMint.add(mintAmount));
     });
 
-    it("mints a rarer NFT", async () => {
+    it(" batch mints a rarer NFT", async () => {
       const overridesRarer = {value: ethers.utils.parseEther("0.55")}
-      const tokenIdBeforeMint = await productNft.startRarerTokenId();
-      await productNft.rarerOrderMint(overridesRarer);
-      const tokenIdAfterMint = await productNft.startRarerTokenId();
-      expect(tokenIdAfterMint).to.equal(tokenIdBeforeMint+1);
+      const tokenIdBeforeMint = await productNft.rareTokenIds();
+      const mintAmount = 5;
+      await productNft.rarerBatchMint(mintAmount, overridesRarer);
+      const tokenIdAfterMint = await productNft.rarerTokenIds();
+      expect(tokenIdAfterMint).to.equal(tokenIdBeforeMint.add(5));
     });
 
     it("mints a rare NFT", async () => {
@@ -71,7 +72,8 @@ describe.only("ProductNft", () => {
 
     it("sets the token URI for rarest mint", async() => {
       const overridesRarest = {value: ethers.utils.parseEther("1.5")}
-      await productNft.rarestBatchMint(overridesRarest);
+      const mintingRarity = 1;
+      await productNft.rarestBatchMint(mintingRarity, overridesRarest);
       const tokenId = await productNft.rarestTokenIds();
       const findTokenURI = await productNft._URI(tokenId);
       expect(findTokenURI).to.equal("https://token-cdn-domain/" + tokenId + ".json");

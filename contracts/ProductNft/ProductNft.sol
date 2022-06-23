@@ -92,12 +92,10 @@ contract ProductNft is ERC1155, IERC2981 {
     }
 
     function initialProductStatusBasedOnRarity(uint256 tokenId, uint256 rarity) internal {
-        if (rarity == 1) {
+        if (rarity == 1 || rarity == 3) {
             ProductStatusByTokenId[tokenId] = ProductStatus.ready;
         } else if (rarity == 2) {
             ProductStatusByTokenId[tokenId] = ProductStatus.not_ready;
-        } else if (rarity == 3) {
-            ProductStatusByTokenId[tokenId] = ProductStatus.ready;
         }
     }
 
@@ -108,7 +106,7 @@ contract ProductNft is ERC1155, IERC2981 {
             tokenIdArray[i] = currentTokenId;
             initialProductStatusBasedOnRarity(currentTokenId, rarity);
             _URIS[currentTokenId] = _URI(currentTokenId);
-            getTokenInfo(currentTokenId);
+            emitTokenInfo(currentTokenId);
             unchecked {
                 ++i;
             }  
@@ -178,16 +176,23 @@ contract ProductNft is ERC1155, IERC2981 {
     *       This includes token id, rarity, product status and URI
     * @param _tokenId is the token Id of the NFT of interest
     */
-    function getTokenInfo(uint256 _tokenId) public returns(string memory rarity) {
+    function emitTokenInfo(uint256 _tokenId) internal {
         if(_tokenId < startRarerTokenIdIndex) {
             emit returnTokenInfo(_tokenId, "Mycelia", ProductStatusByTokenId[_tokenId], _URIS[_tokenId]);
-            return rarity = "Mycelia";
         } else if(_tokenId <= startRareTokenIdIndex && _tokenId > startRarerTokenIdIndex) {
             emit returnTokenInfo(_tokenId, "Diamond", ProductStatusByTokenId[_tokenId], _URIS[_tokenId]);
-            return rarity = "Diamond";
         } else if(_tokenId > startRareTokenIdIndex) {
             emit returnTokenInfo(_tokenId, "Silver", ProductStatusByTokenId[_tokenId], _URIS[_tokenId]);
-            return rarity = "Silver";
+        }
+    }
+
+    function returnRarityByTokenId(uint256 _tokenId) external view returns (string memory rarity) {
+        if(_tokenId < startRarerTokenIdIndex) {
+            return "Mycelia";
+        } else if(_tokenId <= startRareTokenIdIndex && _tokenId > startRarerTokenIdIndex) {
+            return "Diamond";
+        } else if(_tokenId > startRareTokenIdIndex) {
+            return "Silver";
         }
     }
 
