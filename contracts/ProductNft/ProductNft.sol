@@ -23,9 +23,9 @@ contract ProductNft is ERC1155, IERC2981 {
   using Counters for Counters.Counter;
 
   string public baseURI;
-  Counters.Counter internal rarestTokenIds;
-  Counters.Counter internal rarerTokenIds;
-  Counters.Counter internal rareTokenIds;
+  Counters.Counter public rarestTokenIds;
+  Counters.Counter public rarerTokenIds;
+  Counters.Counter public rareTokenIds;
   uint256 public constant PRICE_PER_RAREST_TOKEN = 1.5 ether;
   uint256 public constant PRICE_PER_RARER_TOKEN = 0.55 ether;
   uint256 public constant PRICE_PER_RARE_TOKEN = 0.2 ether;
@@ -176,7 +176,7 @@ contract ProductNft is ERC1155, IERC2981 {
     *       This includes token id, rarity, product status and URI
     * @param _tokenId is the token Id of the NFT of interest
     */
-    function emitTokenInfo(uint256 _tokenId) internal {
+    function emitTokenInfo(uint256 _tokenId) public {
         if(_tokenId < startRarerTokenIdIndex) {
             emit returnTokenInfo(_tokenId, "Mycelia", ProductStatusByTokenId[_tokenId], _URIS[_tokenId]);
         } else if(_tokenId <= startRareTokenIdIndex && _tokenId > startRarerTokenIdIndex) {
