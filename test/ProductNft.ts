@@ -37,6 +37,16 @@ describe.only("ProductNft", () => {
     });
   })
 
+  // describe("Set up of amount array, tokenId array and token info for minting functions", async () => {
+  //   beforeEach(setupProductNft)
+
+  //   it("turns a given amount into an array", async () => {
+  //     const mintAmount = 5;
+  //     await productNft.turnAmountIntoArray(mintAmount);
+  //     expect(tokenCountAfterMint).to.equal([1,2,3,4,5]);
+  //   });
+  // });
+
   describe("Minting random plankton, seal and whale NFTs", async () => {
     beforeEach(setupProductNft)
 
@@ -46,7 +56,7 @@ describe.only("ProductNft", () => {
       const mintAmount = 5;
       await productNft.rarestBatchMint(mintAmount, overridesRarest);
       const tokenCountAfterMint = await productNft.rarestTokenIds();
-      expect(tokenCountAfterMint).to.equal(tokenCountBeforeMint.add(mintAmount));
+      expect(tokenCountAfterMint).to.equal(tokenCountBeforeMint.add(5));
     });
 
     it("batch mints too many rarest NFTs", async () => {
@@ -132,7 +142,7 @@ describe.only("ProductNft", () => {
       const amount = 1;
       await productNft.rarestBatchMint(amount, overridesRarest);
       const tokenId = await productNft.rarestTokenIds();
-      const findTokenURI = await productNft._URI(tokenId);
+      const findTokenURI = await productNft.URI_(tokenId);
       expect(findTokenURI).to.equal("https://token-cdn-domain/" + tokenId + ".json");
     });
   });
@@ -164,7 +174,7 @@ describe.only("ProductNft", () => {
       const tokenIdList = [1, 3, 5, 7, 8];
       const getTokenInfo = await productNft.emitTokenInfo(tokenIdList[1]);
       const getProductStatus = await productNft.ProductStatusByTokenId(tokenIdList[1]);
-      const getTokenURI = await productNft._URIS(tokenIdList[3]);
+      const getTokenURI = await productNft.URIS(tokenIdList[3]);
       expect(getTokenInfo).to.emit(productNft, "returnTokenInfo").withArgs(
         tokenIdList[1], "Mycelia", getProductStatus, getTokenURI
       );
