@@ -3,8 +3,8 @@ import { BigNumber, Contract, Signer } from "ethers";
 import chai from "chai";
 import { solidity } from "ethereum-waffle";
 import { getAddress } from "@ethersproject/address";
-import { ProductNft } from "../typechain/ProductNft";
-import { ProductNftFactory } from "../typechain/ProductNftFactory";
+import { ExposedProductNft } from "../typechain/ExposedProductNft";
+import { ExposedProductNftFactory } from "../typechain/ExposedProductNftFactory";
 import { string } from "hardhat/internal/core/params/argumentTypes";
 
 chai.use(solidity);
@@ -16,7 +16,7 @@ const START_RARER = 12;
 const START_RARE = 1012;
 
 describe.only("ProductNft", () => {
-  let productNft: ProductNft,
+  let productNft: ExposedProductNft,
     deployer: Signer,
     admin1: Signer,
     admin2: Signer,
@@ -25,7 +25,7 @@ describe.only("ProductNft", () => {
 
   const setupProductNft = async () => {
     [deployer, admin1, admin2, vault, ...addresses] = await ethers.getSigners();
-    productNft = await new ProductNftFactory(deployer).deploy(BASE_URI, START_RARER, START_RARE,);
+    productNft = await new ExposedProductNftFactory(deployer).deploy(BASE_URI, START_RARER, START_RARE,);
     await productNft.deployed();
   };
 
@@ -137,25 +137,39 @@ describe.only("ProductNft", () => {
     });
   });
 
-  // describe("get rarity by tokenId", async () => {
-  //   beforeEach(setupProductNft)
+  describe("setting the product status of an array of token Ids", async () => {
+    beforeEach(setupProductNft)
 
-  //   it("emits the rarity when tokenId is given", async() => {
-  //     const tokenId = 1;
-  //     const getTokenInfo = await productNft.emitTokenInfo(tokenId);
-  //     expect(getTokenInfo).to.emit(productNft, "returnTokenInfo").withArgs(
-  //       tokenId, "Mycelia"
-  //     );
-  //   });
+    it("switches the product status of a minted NFT to ready", async() => {
+      const tokenIdList = [14, 19, 201, 560, 788];
+      const notDeployed = false;
+      await productNft.switchProductStatus(tokenIdList, notDeployed);
+      const getProductStatus = await productNft.ProductStatusByTokenId(tokenIdList[3]);
+      expect(getProductStatus).to.equal(1);
+    });
 
-  //   it("returns the rarity when tokenId is given", async() => {
-  //     const tokenId = 1;
-  //     const getTokenInfo = await productNft.emitTokenInfo(tokenId);
-  //     expect(getTokenInfo).to.emit(productNft, "returnTokenInfo").withArgs(
-  //       tokenId, "Mycelia"
-  //     );
-  //   });
-  // });
+    it("switches the product status of a minted NFT to deployed", async() => {
+      const tokenIdList = [1, 3, 5, 7, 8];
+      const deployed = true;
+      await productNft.switchProductStatus(tokenIdList, deployed);
+      const getProductStatus = await productNft.ProductStatusByTokenId(tokenIdList[0]);
+      expect(getProductStatus).to.equal(2);
+    });
+  });
+
+  describe("emit token Info by tokenId", async () => {
+    beforeEach(setupProductNft)
+
+    it("returns the rarity when tokenId is given", async() => {
+      const tokenIdList = [1, 3, 5, 7, 8];
+      const getTokenInfo = await productNft.emitTokenInfo(tokenIdList[1]);
+      const getProductStatus = await productNft.ProductStatusByTokenId(tokenIdList[1]);
+      const getTokenURI = await productNft._URIS(tokenIdList[3]);
+      expect(getTokenInfo).to.emit(productNft, "returnTokenInfo").withArgs(
+        tokenIdList[1], "Mycelia", getProductStatus, getTokenURI
+      );
+    });
+  });
 
   // describe("get royalty info by tokenId and sale price", async () => {
   //   beforeEach(setupProductNft)
