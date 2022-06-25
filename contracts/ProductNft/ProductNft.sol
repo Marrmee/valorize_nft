@@ -35,7 +35,7 @@ contract ProductNft is ERC1155, IERC2981 {
   address addressProductNFTArtist;
 
   mapping(uint256 => ProductStatus) public ProductStatusByTokenId;
-  mapping(uint => string) public _URIS;
+  mapping(uint => string) public URIS;
 
   enum ProductStatus {not_ready, ready, deployed}
 
@@ -51,18 +51,18 @@ contract ProductNft is ERC1155, IERC2981 {
         startRareTokenIdIndex = _startRareTokenIdIndex;
     }
 
-    function _URI(uint256 _tokenId) public view returns (string memory) {
-      if(bytes(_URIS[_tokenId]).length != 0) {
-        return string(_URIS[_tokenId]);
+    function URI_(uint256 tokenId) public view returns (string memory) {
+      if(bytes(URIS[tokenId]).length != 0) {
+        return string(URIS[tokenId]);
         }
-        return string(abi.encodePacked(baseURI, Strings.toString(_tokenId), ".json"));
+        return string(abi.encodePacked(baseURI, Strings.toString(tokenId), ".json"));
     }
     
     function supportsInterface(bytes4 interfaceId) public view override(ERC1155, IERC165) returns (bool) {
         return interfaceId == type(IERC2981).interfaceId || super.supportsInterface(interfaceId);
     }
 
-    function turnAmountIntoArray(uint256 amount) internal pure returns (uint256[] memory tokenAmounts) {
+    function _turnAmountIntoArray(uint256 amount) internal pure returns (uint256[] memory tokenAmounts) {
         tokenAmounts = new uint[](amount);
         for (uint256 i = 0; i < amount;) {
             tokenAmounts[i] = i + 1;
@@ -72,7 +72,7 @@ contract ProductNft is ERC1155, IERC2981 {
         }
     }
 
-    function countBasedOnRarity(uint256 rarity) internal returns (uint256 tokenId) {
+    function _countBasedOnRarity(uint256 rarity) internal returns (uint256 tokenId) {
         if(rarity == 1) {
             rarestTokenIds.increment();
             tokenId = rarestTokenIds.current();
@@ -91,7 +91,7 @@ contract ProductNft is ERC1155, IERC2981 {
         }
     }
 
-    function initialProductStatusBasedOnRarity(uint256 tokenId, uint256 rarity) internal {
+    function _initialProductStatusBasedOnRarity(uint256 tokenId, uint256 rarity) internal {
         if (rarity == 1 || rarity == 3) {
             ProductStatusByTokenId[tokenId] = ProductStatus.ready;
         } else if (rarity == 2) {
@@ -99,14 +99,18 @@ contract ProductNft is ERC1155, IERC2981 {
         }
     }
 
-    function turnTokenIdsIntoArray(uint256 rarity, uint256 amount) internal returns (uint256[] memory tokenIdArray) {
-        tokenIdArray = new uint[](turnAmountIntoArray(amount).length); 
-        for (uint256 i = 0; i < turnAmountIntoArray(amount).length;) { 
-            uint256 currentTokenId = countBasedOnRarity(rarity);
+    function _setURIAndProductStatusThenEmitTokenInfo(uint256 tokenId, uint256 rarity) internal {
+        _initialProductStatusBasedOnRarity(tokenId, rarity);
+        URIS[tokenId] = URI_(tokenId);
+        _emitTokenInfo(tokenId);
+    }
+
+    function _turnTokenIdsIntoArray(uint256 rarity, uint256 amount) internal returns (uint256[] memory tokenIdArray) {
+        tokenIdArray = new uint[](_turnAmountIntoArray(amount).length); 
+        for (uint256 i = 0; i < _turnAmountIntoArray(amount).length;) { 
+            uint256 currentTokenId = _countBasedOnRarity(rarity);
             tokenIdArray[i] = currentTokenId;
-            initialProductStatusBasedOnRarity(currentTokenId, rarity);
-            _URIS[currentTokenId] = _URI(currentTokenId);
-            emitTokenInfo(currentTokenId);
+            _setURIAndProductStatusThenEmitTokenInfo(currentTokenId, rarity);
             unchecked {
                 ++i;
             }  
@@ -123,7 +127,7 @@ contract ProductNft is ERC1155, IERC2981 {
     function rarestBatchMint(uint256 amount) public payable {
         require(PRICE_PER_RAREST_TOKEN * amount <= msg.value, "Ether value sent is not correct");
         require(amount >= 1, "You need to mint atleast one NFT");   
-        _mintBatch(msg.sender, turnTokenIdsIntoArray(1, amount), turnAmountIntoArray(amount), '');
+        _mintBatch(msg.sender, _turnTokenIdsIntoArray(1, amount), _turnAmountIntoArray(amount), '');
     }
 
     /**
@@ -136,7 +140,7 @@ contract ProductNft is ERC1155, IERC2981 {
     function rarerBatchMint(uint256 amount) public payable {
         require(PRICE_PER_RARER_TOKEN * amount <= msg.value, "Ether value sent is not correct");
         require(amount >= 1, "You need to mint atleast one NFT");   
-        _mintBatch(msg.sender, turnTokenIdsIntoArray(2, amount), turnAmountIntoArray(amount), '');
+        _mintBatch(msg.sender, _turnTokenIdsIntoArray(2, amount), _turnAmountIntoArray(amount), '');
     }
 
     /**
@@ -149,19 +153,21 @@ contract ProductNft is ERC1155, IERC2981 {
     function rareBatchMint(uint256 amount) public payable {
         require(PRICE_PER_RARE_TOKEN * amount <= msg.value, "Ether value sent is not correct");
         require(amount >= 1, "You need to mint atleast one NFT");   
-        _mintBatch(msg.sender, turnTokenIdsIntoArray(3, amount), turnAmountIntoArray(amount), '');
+        _mintBatch(msg.sender, _turnTokenIdsIntoArray(3, amount), _turnAmountIntoArray(amount), '');
     }
    
     /**
     *@dev   This function will switch the status of product deployment to deployed.
     *       Information regarding deployment should be retrieved with an API
-    *@param tokenId: the token Id of the NFT that is used to deploy a (free) token
-    *       using the Valorize Token Launcher
+    *@param tokenIdList: the array of token Ids that is used to change the 
+    *       deployment status of a token launched using the Valorize Token Launcher
     *@param deployed: set to true if a token has been deployed 
     */
-    function switchProductStatusAfterTokenLaunch(uint256 tokenId, uint256[] memory tokenIdList, bool deployed) public {
+    function switchProductStatus(uint256[] memory tokenIdList, bool deployed) external {
         if (deployed == true) {
-            ProductStatusByTokenId[tokenId] = ProductStatus.deployed;
+            for(uint256 i=0; i < tokenIdList.length; i++) {
+            ProductStatusByTokenId[tokenIdList[i]] = ProductStatus.deployed;
+            }
         } else if (deployed != true) {
             for(uint256 i=0; i < tokenIdList.length; i++) {
                 require(tokenIdList[i] > startRarerTokenIdIndex && tokenIdList[i] < startRareTokenIdIndex);
@@ -176,13 +182,13 @@ contract ProductNft is ERC1155, IERC2981 {
     *       This includes token id, rarity, product status and URI
     * @param _tokenId is the token Id of the NFT of interest
     */
-    function emitTokenInfo(uint256 _tokenId) public {
+    function _emitTokenInfo(uint256 _tokenId) internal {
         if(_tokenId < startRarerTokenIdIndex) {
-            emit returnTokenInfo(_tokenId, "Mycelia", ProductStatusByTokenId[_tokenId], _URIS[_tokenId]);
+            emit returnTokenInfo(_tokenId, "Mycelia", ProductStatusByTokenId[_tokenId], URIS[_tokenId]);
         } else if(_tokenId <= startRareTokenIdIndex && _tokenId > startRarerTokenIdIndex) {
-            emit returnTokenInfo(_tokenId, "Diamond", ProductStatusByTokenId[_tokenId], _URIS[_tokenId]);
+            emit returnTokenInfo(_tokenId, "Diamond", ProductStatusByTokenId[_tokenId], URIS[_tokenId]);
         } else if(_tokenId > startRareTokenIdIndex) {
-            emit returnTokenInfo(_tokenId, "Silver", ProductStatusByTokenId[_tokenId], _URIS[_tokenId]);
+            emit returnTokenInfo(_tokenId, "Silver", ProductStatusByTokenId[_tokenId], URIS[_tokenId]);
         }
     }
 
