@@ -23,9 +23,9 @@ contract ProductNft is ERC1155, IERC2981 {
   using Counters for Counters.Counter;
 
   string public baseURI;
-  Counters.Counter public rarestTokenIds;
-  Counters.Counter public rarerTokenIds;
-  Counters.Counter public rareTokenIds;
+  Counters.Counter internal rarestTokenIds;
+  Counters.Counter internal rarerTokenIds;
+  Counters.Counter internal rareTokenIds;
   uint256 public constant PRICE_PER_RAREST_TOKEN = 1.5 ether;
   uint256 public constant PRICE_PER_RARER_TOKEN = 0.55 ether;
   uint256 public constant PRICE_PER_RARE_TOKEN = 0.2 ether;
@@ -99,14 +99,18 @@ contract ProductNft is ERC1155, IERC2981 {
         }
     }
 
+    function setURIAndProductStatusThenEmitTokenInfo(uint256 tokenId, uint256 rarity) internal {
+            initialProductStatusBasedOnRarity(tokenId, rarity);
+            _URIS[tokenId] = _URI(tokenId);
+            emitTokenInfo(tokenId);
+    }
+
     function turnTokenIdsIntoArray(uint256 rarity, uint256 amount) internal returns (uint256[] memory tokenIdArray) {
         tokenIdArray = new uint[](turnAmountIntoArray(amount).length); 
         for (uint256 i = 0; i < turnAmountIntoArray(amount).length;) { 
             uint256 currentTokenId = countBasedOnRarity(rarity);
             tokenIdArray[i] = currentTokenId;
-            initialProductStatusBasedOnRarity(currentTokenId, rarity);
-            _URIS[currentTokenId] = _URI(currentTokenId);
-            emitTokenInfo(currentTokenId);
+            setURIAndProductStatusThenEmitTokenInfo(currentTokenId, rarity);
             unchecked {
                 ++i;
             }  
@@ -155,13 +159,15 @@ contract ProductNft is ERC1155, IERC2981 {
     /**
     *@dev   This function will switch the status of product deployment to deployed.
     *       Information regarding deployment should be retrieved with an API
-    *@param tokenId: the token Id of the NFT that is used to deploy a (free) token
-    *       using the Valorize Token Launcher
+    *@param tokenIdList: the array of token Ids that is used to change the 
+    *       deployment status of a token launched using the Valorize Token Launcher
     *@param deployed: set to true if a token has been deployed 
     */
-    function switchProductStatusAfterTokenLaunch(uint256 tokenId, uint256[] memory tokenIdList, bool deployed) public {
+    function switchProductStatus(uint256[] memory tokenIdList, bool deployed) public {
         if (deployed == true) {
-            ProductStatusByTokenId[tokenId] = ProductStatus.deployed;
+            for(uint256 i=0; i < tokenIdList.length; i++) {
+            ProductStatusByTokenId[tokenIdList[i]] = ProductStatus.deployed;
+            }
         } else if (deployed != true) {
             for(uint256 i=0; i < tokenIdList.length; i++) {
                 require(tokenIdList[i] > startRarerTokenIdIndex && tokenIdList[i] < startRareTokenIdIndex);
