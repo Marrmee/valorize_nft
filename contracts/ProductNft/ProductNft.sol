@@ -23,9 +23,9 @@ contract ProductNft is ERC1155, IERC2981 {
   using Counters for Counters.Counter;
 
   string public baseURI;
-  Counters.Counter public rarestTokenIds;
-  Counters.Counter public rarerTokenIds;
-  Counters.Counter public rareTokenIds;
+  Counters.Counter internal rarestTokenIds;
+  Counters.Counter internal rarerTokenIds;
+  Counters.Counter internal rareTokenIds;
   uint256 public constant PRICE_PER_RAREST_TOKEN = 1.5 ether;
   uint256 public constant PRICE_PER_RARER_TOKEN = 0.55 ether;
   uint256 public constant PRICE_PER_RARE_TOKEN = 0.2 ether;
@@ -111,6 +111,7 @@ contract ProductNft is ERC1155, IERC2981 {
             uint256 currentTokenId = _countBasedOnRarity(rarity);
             tokenIdArray[i] = currentTokenId;
             _setURIAndProductStatusThenEmitTokenInfo(currentTokenId, rarity);
+
             unchecked {
                 ++i;
             }  
@@ -164,6 +165,7 @@ contract ProductNft is ERC1155, IERC2981 {
     *@param deployed: set to true if a token has been deployed 
     */
     function switchProductStatus(uint256[] memory tokenIdList, bool deployed) external {
+
         if (deployed == true) {
             for(uint256 i=0; i < tokenIdList.length; i++) {
             ProductStatusByTokenId[tokenIdList[i]] = ProductStatus.deployed;
