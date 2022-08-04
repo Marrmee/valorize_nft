@@ -15,7 +15,7 @@ const BASE_URI = "https://token-cdn-domain/";
 const START_RARER = 12;
 const START_RARE = 1012;
 
-describe.only("ProductNft", () => {
+describe("ProductNft", () => {
   let productNft: ExposedProductNft,
     deployer: Signer,
     admin1: Signer,

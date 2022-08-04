@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 /**
 @title MembershipNft
 @author Marco Huberts & Javier Gonzalez
-@dev Implementation of a Membership Non Fungible Token using ERC721.
+@dev Implementation of a Community Non Fungible Token using ERC721B.
 */
 
 contract MembershipNft is ERC721 {
@@ -86,6 +86,7 @@ contract MembershipNft is ERC721 {
         startPlanktonTokenId + _remainingPlanktonFunctionCalls[0] + _remainingPlanktonFunctionCalls[1] + _remainingPlanktonFunctionCalls[2], 
         startPlanktonTokenId + _remainingPlanktonFunctionCalls[0] + _remainingPlanktonFunctionCalls[1] + _remainingPlanktonFunctionCalls[2] + _remainingPlanktonFunctionCalls[3], 
         startPlanktonTokenId + _remainingPlanktonFunctionCalls[0] + _remainingPlanktonFunctionCalls[1] + _remainingPlanktonFunctionCalls[2] + _remainingPlanktonFunctionCalls[3] + _remainingPlanktonFunctionCalls[4]);
+
   }
 
   function _baseURI() internal view override returns (string memory) {
@@ -101,21 +102,58 @@ contract MembershipNft is ERC721 {
     randomNumber = tokenIdStart + (block.difficulty + i / tokensToPickFrom) % tokensToPickFrom + 1;
   }
 
-        /**
-        *   Token id selection logic below:
-        *   Mycelia rarity is picked if: randomnumber <= 3 && myceliaTokensLeft > 0
-        *   Obsidian rarity is picked if: randomnumber <= 15 && obsidianTokensLeft > 0
-        *   Diamond rarity is picked if: randomnumber <= 50 && diamondTokensLeft > 0
-        *
-        *   Problem: If one the tokens that are left for one of the rarity is 0 the function reverts while some other rarity NFTs are still available for mint
-        *   
-        *   Example: let's say after 47 function calls 3 diamond nfts are left
-        *   then randomnumber can only be < 3 + 1 because whaleTokensLeft is used to calculate the randomNumber
-        *   but it does not pick a diamond nft anymore (to pick a diamond NFT the randomNumber should be between 15 and 50) 
-        *   -> it should pick the leftover tokens (how?)
-        */
+  function getRarityFromRandomNumber(uint256 randomNumber, MintType mintType) internal view returns (Rarity rarity) {
+    //not 3 mycelia left but 3 diamond
+    //if the whale tokens left is down to 3, but e.g. 3 diamond nfts are left for minting then the random number will be  < 3 + 1 
+    //which does not pick a diamond nft anymore because of the logic below
+    if (randomNumber <= RarityTraitsByKey[mintType].Mycelia) { // add expression logic from whale minting function
+        // randomnumber <= 3
+        // randomnumber <= 15
+        // randomnumber <= 50
+        //let's say after 47 function calls 3 diamond nfts are left -> it should pick the leftover tokens
+        // then randomnumber can only be < 3 + 1 but it does not pick a diamond nft anymore -> it should pick the leftover tokens
+        
+      rarity = Rarity.Mycelia;
+    } else if (randomNumber <= RarityTraitsByKey[mintType].Obsidian) {
+      rarity = Rarity.Obsidian;
+    } else if (randomNumber <= RarityTraitsByKey[mintType].Diamond) {
+      rarity = Rarity.Diamond;
+    } else if (randomNumber <= RarityTraitsByKey[mintType].Gold) {
+      rarity = Rarity.Gold;
+    } else if (randomNumber <= RarityTraitsByKey[mintType].Silver) {
+      rarity = Rarity.Silver;
+    }
+  }
 
-  function createArrayOfRarityIds(MintType mintType) internal view returns (uint256[5] memory array) {
+  function getSelectedRarity(uint256 randomNumber, MintType mintType, Rarity newRarity) internal view returns (Rarity rarity) {
+    if (randomNumber < RarityTraitsByKey[mintType].Mycelia) {
+      rarity = newRarity;
+    } else if (randomNumber < RarityTraitsByKey[mintType].Obsidian) {
+      rarity = newRarity;
+    } else if (randomNumber < RarityTraitsByKey[mintType].Diamond) {
+      rarity = newRarity;
+    } else if (randomNumber < RarityTraitsByKey[mintType].Gold) {
+      rarity = newRarity;
+    } else if (randomNumber < RarityTraitsByKey[mintType].Silver) {
+      rarity = newRarity;
+    }
+  }
+
+//   function pickMintingFunction(Rarity rarity, MintType mintType, uint256 tokensToPickFrom, uint256 tokenIdStart, Rarity newRarity) internal {
+//     if (rarity == Rarity.Mycelia) {
+//       myceliaMint(mintType, tokensToPickFrom, tokenIdStart, newRarity);
+//     } else if (rarity == Rarity.Obsidian) {
+//       obsidianMint(mintType, tokensToPickFrom, tokenIdStart);
+//     } else if (rarity == Rarity.Diamond) {
+//       diamondMint(mintType, tokensToPickFrom, tokenIdStart);
+//     } else if (rarity == Rarity.Gold) {
+//       goldMint(mintType, tokensToPickFrom, tokenIdStart);
+//     } else if (rarity == Rarity.Silver) {
+//       silverMint(mintType, tokensToPickFrom, tokenIdStart);
+//     }
+//   }
+
+  function createArrayofRarityIds(MintType mintType) internal view returns (uint256[5] memory array) {
     array = [RarityTraitsByKey[mintType].Mycelia, 
     RarityTraitsByKey[mintType].Obsidian, 
     RarityTraitsByKey[mintType].Diamond, 
@@ -123,17 +161,13 @@ contract MembershipNft is ERC721 {
     RarityTraitsByKey[mintType].Silver];
   }
 
-  function getRarityFromRandomNumber(uint256 randomNumber, MintType mintType) internal view returns (Rarity rarity) {
-    if (randomNumber <= RarityTraitsByKey[mintType].Mycelia && RarityTraitsByKey[mintType].Mycelia > 0) {     
-      rarity = Rarity.Mycelia;
-    } else if (randomNumber <= RarityTraitsByKey[mintType].Obsidian && RarityTraitsByKey[mintType].Obsidian > 0) {
-      rarity = Rarity.Obsidian;
-    } else if (randomNumber <= RarityTraitsByKey[mintType].Diamond && RarityTraitsByKey[mintType].Diamond > 0) {
-      rarity = Rarity.Diamond;
-    } else if (randomNumber <= RarityTraitsByKey[mintType].Gold && RarityTraitsByKey[mintType].Gold > 0) {
-      rarity = Rarity.Gold;
-    } else if (randomNumber <= RarityTraitsByKey[mintType].Silver && RarityTraitsByKey[mintType].Silver > 0) {
-      rarity = Rarity.Silver;
+  function anyMint(MintType mintType, uint256 rarity, uint256 selectedTokenId) internal {
+    if (createArrayofRarityIds(mintType)[rarity] > 0) {
+        _safeMint(msg.sender, createArrayofRarityIds(mintType)[rarity]);
+        emit returnRarityByTokenId(createArrayofRarityIds(mintType)[rarity], ""); 
+        createArrayofRarityIds(mintType)[rarity]--;
+    } else { 
+        _safeMint(msg.sender, selectedTokenId);
     }
   }
 
@@ -186,7 +220,91 @@ contract MembershipNft is ERC721 {
         _safeMint(msg.sender, selectedTokenId);
     }
   }
+//   function myceliaMint(MintType mintType, uint256 tokensToPickFrom, uint256 tokenIdStart, Rarity newRarity) internal {
+//     if (RarityTraitsByKey[mintType].Mycelia > 0) {
+//         _safeMint(msg.sender, RarityTraitsByKey[mintType].Mycelia);
+//         emit returnRarityByTokenId(RarityTraitsByKey[mintType].Mycelia, "Mycelia"); 
+//         RarityTraitsByKey[mintType].Mycelia--;
+//     } else { 
+//         pickMintingFunction(getSelectedRarity(getRandomNumber(tokensToPickFrom, 0), mintType, newRarity), mintType, tokensToPickFrom, tokenIdStart, newRarity);
+//     }
+//   }
 
+//   function obsidianMint(MintType mintType, uint256 tokensToPickFrom, uint256 tokenIdStart, Rarity newRarity) internal {
+//     if (RarityTraitsByKey[mintType].Obsidian > 0) {
+//         _safeMint(msg.sender, RarityTraitsByKey[mintType].Obsidian);
+//         emit returnRarityByTokenId(RarityTraitsByKey[mintType].Obsidian, "Obsidian"); 
+//         RarityTraitsByKey[mintType].Obsidian--;
+//     } else {
+//         pickMintingFunction(getRarityFromRandomNumber(getRandomNumber(tokensToPickFrom, 0), mintType), mintType, tokensToPickFrom, tokenIdStart, newRarity);
+//     }
+
+//   }
+
+//   function diamondMint(MintType mintType, uint256 tokensToPickFrom, uint256 tokenIdStart, Rarity newRarity) internal {
+//     if (RarityTraitsByKey[mintType].Diamond > 0) {
+//         _safeMint(msg.sender, RarityTraitsByKey[mintType].Diamond);
+//         emit returnRarityByTokenId(RarityTraitsByKey[mintType].Diamond, "Diamond"); 
+//         RarityTraitsByKey[mintType].Diamond--;
+//     } else {
+//         pickMintingFunction(getRarityFromRandomNumber(getRandomNumber(tokensToPickFrom, 0), mintType), mintType, tokensToPickFrom, tokenIdStart, newRarity);
+//     }
+//   }
+
+//   function goldMint(MintType mintType, uint256 tokensToPickFrom, uint256 tokenIdStart, Rarity newRarity) internal {
+//     if (RarityTraitsByKey[mintType].Gold > 0) {
+//         _safeMint(msg.sender, RarityTraitsByKey[mintType].Gold);
+//         emit returnRarityByTokenId(RarityTraitsByKey[mintType].Gold, "Gold"); 
+//         RarityTraitsByKey[mintType].Gold--;
+//     } else {
+//         pickMintingFunction(getRarityFromRandomNumber(getRandomNumber(tokensToPickFrom, 0), mintType), mintType, tokensToPickFrom, tokenIdStart, newRarity);
+//     }
+//   }
+
+//   function silverMint(MintType mintType, uint256 tokensToPickFrom, uint256 tokenIdStart, Rarity newRarity) internal {
+//     if (RarityTraitsByKey[mintType].Silver > 0) {
+//         _safeMint(msg.sender, RarityTraitsByKey[mintType].Silver);
+//         emit returnRarityByTokenId(RarityTraitsByKey[mintType].Silver, "Silver"); 
+//         RarityTraitsByKey[mintType].Silver--;
+//     } else {
+//         pickMintingFunction(getRarityFromRandomNumber(getRandomNumber(tokensToPickFrom, 0), mintType), mintType, tokensToPickFrom, tokenIdStart, newRarity);
+//     }
+//   }
+
+//   function getRarityByTokenId(uint256 _tokenId) external view returns(string memory rarity) {
+//       if(turnRandomNumberIntoRarity(_tokenId) == Rarity.Mycelia) {
+//           return rarity = "Mycelia";
+//       } else if(turnRandomNumberIntoRarity(_tokenId) == Rarity.Obsidian) {
+//           return rarity = "Obsidian";
+//       } else if(turnRandomNumberIntoRarity(_tokenId) == Rarity.Diamond) {
+//           return rarity = "Diamond";
+//       } else if(turnRandomNumberIntoRarity(_tokenId) == Rarity.Gold) {
+//           return rarity = "Gold";
+//       } else if(turnRandomNumberIntoRarity(_tokenId) == Rarity.Silver) {
+//           return rarity = "Silver";
+//       }
+//     }
+
+//   function mintAny(MintType mintType) public {
+//     if (createArrayofRarityIds(mintType)[0] > 0) {
+//         _safeMint(msg.sender, RarityTraitsByKey[mintType].Mycelia);
+//         emit returnRarityByTokenId(RarityTraitsByKey[mintType].Mycelia, "Mycelia");
+//     } else if (RarityTraitsByKey[mintType].Obsidian > 0) {
+//         _safeMint(msg.sender, RarityTraitsByKey[mintType].Obsidian);
+//         emit returnRarityByTokenId(RarityTraitsByKey[mintType].Obsidian, "Obsidian");
+//     } else if (RarityTraitsByKey[mintType].Diamond > 0) {
+//         _safeMint(msg.sender, RarityTraitsByKey[mintType].Diamond);
+//         emit returnRarityByTokenId(RarityTraitsByKey[mintType].Diamond, "Diamond");
+//     } else if (RarityTraitsByKey[mintType].Gold > 0) {
+//         _safeMint(msg.sender, RarityTraitsByKey[mintType].Gold);
+//         emit returnRarityByTokenId(RarityTraitsByKey[mintType].Gold, "Gold");
+//     } else if (RarityTraitsByKey[mintType].Silver > 0) {
+//         _safeMint(msg.sender, RarityTraitsByKey[mintType].Silver);
+//         emit returnRarityByTokenId(RarityTraitsByKey[mintType].Silver, "Silver"); 
+//     } else {
+//         revert("NFTs for this minting function are sold out");
+//     }
+//   }
 //whale 1 to 50 seal 51 to 200 
 //1 to 3 is mycelia, 3 to 15 
   function mintRandomWhaleNFT() public payable {
